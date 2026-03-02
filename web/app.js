@@ -281,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         previewImage.onload = () => {
             cropper = new Cropper(previewImage, {
                 viewMode: 1,
-                dragMode: 'crop',
+                dragMode: 'crop', // draw crop box by default
                 autoCropArea: 0.8,
                 restore: false,
                 guides: true,
@@ -289,7 +289,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 highlight: false,
                 cropBoxMovable: true,
                 cropBoxResizable: true,
-                toggleDragModeOnDblclick: false,
+                toggleDragModeOnDblclick: true, // double click to switch between crop/pan
+                zoomOnWheel: false, // disable sticky mouse wheel zoom
             });
         };
 
@@ -297,6 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resultsArea.classList.add("hidden");
         previewArea.classList.remove("hidden");
         cropperActions.classList.remove("hidden");
+        document.querySelector(".cropper-toolbar").classList.remove("hidden");
         resultsGrid.innerHTML = '';
         metricsText.innerText = '';
         processingStatus.classList.add("hidden");
@@ -306,11 +308,16 @@ document.addEventListener("DOMContentLoaded", () => {
         currentQueryObjUrl = objUrl;
     }
 
+    // Cropper Toolbar Controls
+    document.getElementById("crop-zoom-in").addEventListener("click", () => cropper && cropper.zoom(0.1));
+    document.getElementById("crop-zoom-out").addEventListener("click", () => cropper && cropper.zoom(-0.1));
+    document.getElementById("crop-move").addEventListener("click", () => cropper && cropper.setDragMode('move'));
+    document.getElementById("crop-box").addEventListener("click", () => cropper && cropper.setDragMode('crop'));
+    document.getElementById("crop-reset").addEventListener("click", () => cropper && cropper.reset());
+
     // Handle "Search Cropped Area"
     searchCroppedBtn.addEventListener("click", () => {
         if (!cropper) return;
-
-        cropperActions.classList.add("hidden");
 
         cropper.getCroppedCanvas().toBlob((blob) => {
             if (!blob) {
@@ -333,8 +340,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Handle "Search Full Image"
     searchFullBtn.addEventListener("click", () => {
         if (!currentQueryFile) return;
-
-        cropperActions.classList.add("hidden");
 
         if (isLocalMode) {
             processLocal(currentQueryFile, currentQueryObjUrl);

@@ -102,11 +102,21 @@
 
     <div id="preview-area" class="preview-area hidden" style="background: var(--bg-card); border-radius: 20px; padding: 30px; border: 1px solid var(--border-light); backdrop-filter: var(--glass-blur);">
       <h3>Query Image</h3>
-      <p class="upload-subtext">Drag to select a bounding box (optional).</p>
-      <div class="preview-img-wrapper" style="width: 100%; max-width: 500px; max-height: 400px;">
+      <p class="upload-subtext">Use the controls below to zoom, pan, or draw a new crop box.</p>
+      <div class="preview-img-wrapper" style="width: 100%; max-width: 800px; height: 60vh; min-height: 400px; max-height: 600px;">
         <img id="preview-image" src="" alt="Preview" style="display: block; max-width: 100%;" />
       </div>
-      <div class="cropper-actions">
+      
+      <!-- Cropper Toolbar -->
+      <div class="cropper-toolbar" style="display: flex; gap: 8px; justify-content: center; margin-top: 15px; flex-wrap: wrap;">
+        <button id="crop-zoom-in" class="upload-btn" style="padding: 10px 16px; margin-top: 0; min-width: 44px;" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+        <button id="crop-zoom-out" class="upload-btn" style="padding: 10px 16px; margin-top: 0; min-width: 44px;" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+        <button id="crop-move" class="upload-btn" style="padding: 10px 16px; margin-top: 0; min-width: 44px; background: rgba(255,255,255,0.1); color: var(--text-main);" title="Pan Image"><i class="fas fa-arrows-alt"></i></button>
+        <button id="crop-box" class="upload-btn" style="padding: 10px 16px; margin-top: 0; min-width: 44px; background: rgba(255,255,255,0.1); color: var(--text-main);" title="Draw Crop Box"><i class="fas fa-crop-alt"></i></button>
+        <button id="crop-reset" class="upload-btn" style="padding: 10px 16px; margin-top: 0; min-width: 44px; background: rgba(255,255,255,0.1); color: var(--text-main);" title="Reset"><i class="fas fa-sync-alt"></i></button>
+      </div>
+
+      <div class="cropper-actions" style="margin-top: 20px;">
         <button id="search-cropped-btn" class="upload-btn" style="margin-top: 5px;">Search Cropped Area</button>
         <button id="search-full-btn" class="upload-btn" style="margin-top: 5px; background: rgba(255,255,255,0.1); color: var(--text-main);">Search Full Image</button>
       </div>
