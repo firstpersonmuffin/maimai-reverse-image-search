@@ -19,13 +19,11 @@ export default function PerspectiveCropper({ image, onPointsChange }: Perspectiv
     { x: 100, y: 300 }
   ]);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
-  const [imgDims, setImgDims] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const img = new Image();
     img.src = image;
     img.onload = () => {
-      setImgDims({ width: img.naturalWidth, height: img.naturalHeight });
       // Initialize points to a reasonable square centered in the image
       const w = 200;
       const h = 200;

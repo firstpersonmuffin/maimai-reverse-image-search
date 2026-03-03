@@ -657,94 +657,94 @@ export default function ImageSearchApplet() {
         {results.length > 0 && (
           <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-full mt-2">
              <div className="flex justify-between items-center mb-6">
-               <h3 className="text-2xl font-bold">Top Matches</h3>
-               <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-sm text-blue-400 hover:text-blue-300">↑ Back to Query</button>
+                <h3 className="text-2xl font-bold">Top Matches</h3>
+                <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-sm text-blue-400 hover:text-blue-300">↑ Back to Query</button>
              </div>
              
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-               {results.map((match: any, idx: number) => {
-                 const hasDx = match.charts?.some((c: any) => (c.type || '').toLowerCase().includes('dx'));
-                 const hasStd = match.charts?.some((c: any) => (c.type || '').toLowerCase().includes('std') || (c.type || '').toLowerCase().includes('standard'));
-                 
-                 const getDiffColor = (diff: string) => {
-                   switch (diff.toLowerCase()) {
-                     case 'basic': return 'bg-green-600 text-white';
-                     case 'advanced': return 'bg-yellow-500 text-black';
-                     case 'expert': return 'bg-red-500 text-white';
-                     case 'master': return 'bg-purple-600 text-white';
-                     case 'remaster': return 'bg-pink-400 text-white';
-                     default: return 'bg-gray-600 text-white';
-                   }
-                 };
+                {results.map((match: any, idx: number) => {
+                  const hasDx = match.charts?.some((c: any) => (c.type || '').toLowerCase().includes('dx'));
+                  const hasStd = match.charts?.some((c: any) => (c.type || '').toLowerCase().includes('std') || (c.type || '').toLowerCase().includes('standard'));
+                  
+                  const getDiffColor = (diff: string) => {
+                    switch (diff.toLowerCase()) {
+                      case 'basic': return 'bg-green-600 text-white';
+                      case 'advanced': return 'bg-yellow-500 text-black';
+                      case 'expert': return 'bg-red-500 text-white';
+                      case 'master': return 'bg-purple-600 text-white';
+                      case 'remaster': return 'bg-pink-400 text-white';
+                      default: return 'bg-gray-600 text-white';
+                    }
+                  };
 
-                 // Filter charts to display only the ones matching the selected difficulty
-                 const displayCharts = match.charts?.filter((c: any) => {
-                    const diffMatch = difficultyFilter.includes('All') || difficultyFilter.some((d: string) => d.toLowerCase().replace(':', '') === (c.difficulty || '').toLowerCase().replace(':', ''));
-                    const levelMatch = parseFloat(c.internalLevel || c.level || 0) >= minLevel && parseFloat(c.internalLevel || c.level || 0) <= maxLevel;
-                    let rawType = (c.type || '').toLowerCase();
-                    const typeMatch = (chartTypeFilter.includes('DX') && rawType.includes('dx')) || 
-                                      (chartTypeFilter.includes('STD') && (rawType.includes('std') || rawType.includes('standard')));
-                    return diffMatch && levelMatch && typeMatch;
-                 });
+                  // Filter charts to display only the ones matching the selected difficulty
+                  const displayCharts = match.charts?.filter((c: any) => {
+                     const diffMatch = difficultyFilter.includes('All') || difficultyFilter.some((d: string) => d.toLowerCase().replace(':', '') === (c.difficulty || '').toLowerCase().replace(':', ''));
+                     const levelMatch = parseFloat(c.internalLevel || c.level || 0) >= minLevel && parseFloat(c.internalLevel || c.level || 0) <= maxLevel;
+                     let rawType = (c.type || '').toLowerCase();
+                     const typeMatch = (chartTypeFilter.includes('DX') && rawType.includes('dx')) || 
+                                       (chartTypeFilter.includes('STD') && (rawType.includes('std') || rawType.includes('standard')));
+                     return diffMatch && levelMatch && typeMatch;
+                  });
 
-                 return (
-                 <div key={idx} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-700 flex flex-col relative group">
-                   {idx === 0 && <div className="absolute top-2 right-2 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-lg z-10 uppercase tracking-wider">Best Match</div>}
-                   <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-                    {hasDx && <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-blue-400/50">DX</div>}
-                    {hasStd && <div className="bg-gradient-to-r from-green-600 to-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-green-400/50">STD</div>}
-                   </div>
-                   
-                   <div className="relative pt-[100%] z-0 overflow-hidden bg-gray-950">
-                     <img 
-                       src={`https://dp4p6x0xfi5o9.cloudfront.net/maimai/img/cover/${match.imageName}`} 
-                       onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/300?text=No+Image'}
-                       className="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                       alt={match.title}
-                     />
-                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8">
-                       <div className="text-[10px] text-blue-300 font-mono font-semibold tracking-wide drop-shadow-md">{match.score} pts</div>
-                     </div>
-                   </div>
-                   <div className="p-3 flex-1 flex flex-col z-10 bg-gray-900 border-t border-gray-800">
-                     <div className="flex justify-between items-start gap-2 mb-1">
-                       <h4 className="font-bold text-sm leading-snug line-clamp-2" title={match.title}>{match.title || match.imageName}</h4>
-                       <button onClick={() => handleCopy(match.title || '')} className="text-gray-400 hover:text-white mt-0.5 shrink-0 transition-colors bg-gray-800 p-1 rounded"><Copy size={12}/></button>
-                     </div>
-                     <p className="text-[10px] text-gray-400 mb-1 line-clamp-1">{match.artist}</p>
-                     
-                     {(match.version || match.releaseDate) && (
-                        <div className="flex flex-col gap-0.5 text-[9px] text-gray-500 mb-2 font-medium">
-                          {match.version && <span>Ver: {match.version}</span>}
-                          {match.releaseDate && <span>Added: {match.releaseDate}</span>}
-                        </div>
-                     )}
-                     
-                     {displayCharts && displayCharts.length > 0 && (
-                       <div className="mb-3">
-                         <div className="text-[9px] text-gray-400 mb-1 font-semibold uppercase tracking-wider">Matched Charts:</div>
-                         <div className="flex gap-1 flex-wrap">
-                            {displayCharts.map((c, i) => (
-                              <div key={i} className={`flex items-stretch text-[9px] rounded overflow-hidden shadow-sm border border-gray-700`}>
-                                <span className={`${getDiffColor(c.difficulty || '')} px-1.5 py-0.5 font-bold uppercase`}>
-                                  {(c.type || '').substring(0,2).toUpperCase()} {(c.difficulty || '').substring(0,3)}
-                                </span>
-                                <span className="bg-gray-800 text-gray-200 px-1.5 py-0.5 font-bold">
-                                  {c.level} <span className="text-gray-400 font-normal">({parseFloat(c.internalLevel || 0).toFixed(1)})</span>
-                                </span>
-                              </div>
-                            ))}
+                  return (
+                  <div key={idx} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-700 flex flex-col relative group">
+                    {idx === 0 && <div className="absolute top-2 right-2 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-lg z-10 uppercase tracking-wider">Best Match</div>}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                     {hasDx && <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-blue-400/50">DX</div>}
+                     {hasStd && <div className="bg-gradient-to-r from-green-600 to-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-green-400/50">STD</div>}
+                    </div>
+                    
+                    <div className="relative pt-[100%] z-0 overflow-hidden bg-gray-950">
+                      <img 
+                        src={`https://dp4p6x0xfi5o9.cloudfront.net/maimai/img/cover/${match.imageName}`} 
+                        onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/300?text=No+Image'}
+                        className="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        alt={match.title}
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8">
+                        <div className="text-[10px] text-blue-300 font-mono font-semibold tracking-wide drop-shadow-md">{match.score} pts</div>
+                      </div>
+                    </div>
+                    <div className="p-3 flex-1 flex flex-col z-10 bg-gray-900 border-t border-gray-800">
+                      <div className="flex justify-between items-start gap-2 mb-1">
+                        <h4 className="font-bold text-sm leading-snug line-clamp-2" title={match.title}>{match.title || match.imageName}</h4>
+                        <button onClick={() => handleCopy(match.title || '')} className="text-gray-400 hover:text-white mt-0.5 shrink-0 transition-colors bg-gray-800 p-1 rounded"><Copy size={12}/></button>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mb-1 line-clamp-1">{match.artist}</p>
+                      
+                      {(match.version || match.releaseDate) && (
+                         <div className="flex flex-col gap-0.5 text-[9px] text-gray-500 mb-2 font-medium">
+                           {match.version && <span>Ver: {match.version}</span>}
+                           {match.releaseDate && <span>Added: {match.releaseDate}</span>}
                          </div>
-                       </div>
-                     )}
-                     
-                     <div className="flex gap-1.5 mt-auto">
-                       <a href={`https://arcade-songs.zetaraku.dev/maimai/?title=${encodeURIComponent(match.title || '')}`} target="_blank" className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-center py-1.5 text-[10px] rounded font-bold transition-colors">Zetaraku</a>
-                       <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent('maimai ' + (match.title || ''))}`} target="_blank" className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-center py-1.5 text-[10px] rounded font-bold transition-colors">YouTube</a>
-                     </div>
-                   </div>
-                 </div>
-               )})}
+                      )}
+                      
+                      {displayCharts && displayCharts.length > 0 && (
+                        <div className="mb-3">
+                          <div className="text-[9px] text-gray-400 mb-1 font-semibold uppercase tracking-wider">Matched Charts:</div>
+                          <div className="flex gap-1 flex-wrap">
+                             {displayCharts.map((c: any, i: number) => (
+                               <div key={i} className={`flex items-stretch text-[9px] rounded overflow-hidden shadow-sm border border-gray-700`}>
+                                 <span className={`${getDiffColor(c.difficulty || '')} px-1.5 py-0.5 font-bold uppercase`}>
+                                   {(c.type || '').substring(0,2).toUpperCase()} {(c.difficulty || '').substring(0,3)}
+                                 </span>
+                                 <span className="bg-gray-800 text-gray-200 px-1.5 py-0.5 font-bold">
+                                   {c.level} <span className="text-gray-400 font-normal">({parseFloat(c.internalLevel || 0).toFixed(1)})</span>
+                                 </span>
+                               </div>
+                             ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-1.5 mt-auto">
+                        <a href={`https://arcade-songs.zetaraku.dev/maimai/?title=${encodeURIComponent(match.title || '')}`} target="_blank" className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-center py-1.5 text-[10px] rounded font-bold transition-colors">Zetaraku</a>
+                        <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent('maimai ' + (match.title || ''))}`} target="_blank" className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/50 text-center py-1.5 text-[10px] rounded font-bold transition-colors">YouTube</a>
+                      </div>
+                    </div>
+                  </div>
+                )})}
              </div>
           </div>
         )}

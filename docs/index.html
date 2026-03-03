@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maimai Tools Portal</title>
+    <!-- OpenCV for local mode image matching -->
+    <script type="text/javascript">
+      // GitHub Pages Multipages-SPA hack
+      // https://github.com/rafgraph/spa-github-pages
+      (function(l) {
+        if (l.search[1] === 'p') {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&') 
+          }).filter(function(s) {
+            return s.slice(0, 2) === 'p='
+          })[0];
+          if (decoded) {
+            window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded.slice(2) +
+              (l.hash || '')
+            );
+          }
+        }
+      }(window.location))
+    </script>
+    <script>
+      var Module = {
+        onRuntimeInitialized() {
+          window.cvReady = true;
+        }
+      };
+    </script>
+    <script async src="https://docs.opencv.org/4.10.0/opencv.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/maimai-reverse-image-search/assets/index-fIsPVLBa.js"></script>
+    <link rel="stylesheet" crossorigin href="/maimai-reverse-image-search/assets/index-rYpVFKef.css">
+  </head>
+  <body class="bg-gray-900 text-gray-100 font-['Outfit'] min-h-screen">
+    <div id="root"></div>
+  </body>
+</html>
