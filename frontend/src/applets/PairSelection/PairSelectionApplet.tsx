@@ -84,7 +84,6 @@ export default function PairSelectionApplet() {
 
   // Results State
   const [matchedSongs, setMatchedSongs] = useState<MatchedSongResult[]>([]);
-  const [totalHiddenInFilter, setTotalHiddenInFilter] = useState(0);
 
   // Hidden Charts State
   const [hiddenCharts, setHiddenCharts] = useState<string[]>([]);
@@ -173,7 +172,6 @@ export default function PairSelectionApplet() {
     // offload to next frame to allow UI re-render for loading state
     requestAnimationFrame(() => {
       let matches: MatchedSongResult[] = [];
-      let hiddenCount = 0;
 
       for (const song of Object.values(metadata)) {
         if (!song.charts) continue;
@@ -217,18 +215,18 @@ export default function PairSelectionApplet() {
                // Check P1
                if (internalLvl >= p1.minLevel && internalLvl <= p1.maxLevel) {
                  matchedP1 = true;
-                 if (!isHidden) { p1ValidCharts.push(cWithId); p1VisibleCount++; }
+                 p1ValidCharts.push(cWithId); 
+                 if (!isHidden) p1VisibleCount++;
                }
 
                // Check P2
                if (internalLvl >= p2.minLevel && internalLvl <= p2.maxLevel) {
                  matchedP2 = true;
-                 if (!isHidden) { p2ValidCharts.push(cWithId); p2VisibleCount++; }
+                 p2ValidCharts.push(cWithId); 
+                 if (!isHidden) p2VisibleCount++;
                }
                
-               // If it matched the levels but was blocked by hiding, increment the filter's hidden tally
                if ((matchedP1 || matchedP2) && isHidden) {
-                   hiddenCount++;
                    typeHiddenCount++;
                }
             });
@@ -260,7 +258,6 @@ export default function PairSelectionApplet() {
       });
       
       setMatchedSongs(matches);
-      setTotalHiddenInFilter(hiddenCount);
       setSearching(false);
     });
   };
@@ -499,10 +496,10 @@ export default function PairSelectionApplet() {
                </div>
                
                {/* Controls Row 3 - Hidden Status */}
-               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-sm w-full bg-gray-950/50 p-4 rounded-xl border border-gray-800">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-sm w-full bg-gray-950/50 p-4 rounded-xl border border-gray-800">
                  <div className="flex items-center gap-2 text-gray-400">
                     <EyeOff size={16} />
-                    <span>{totalHiddenInFilter} hidden in filter | {hiddenCharts.length} total globally hidden manually</span>
+                    <span>{matchedSongs.filter(m => hiddenCharts.includes(`${m.song.songId}_${m.type}`)).length} hidden results found</span>
                  </div>
                  <div className="flex-1"></div>
                  {hiddenCharts.length > 0 && (
@@ -533,7 +530,7 @@ export default function PairSelectionApplet() {
                 </h2>
 
                 <div className="space-y-4">
-                  {matchedSongs.slice(0, resultsLimit).map(({ song, type, p1Charts, p2Charts, hiddenCount }) => {
+                  {matchedSongs.slice(0, resultsLimit).map(({ song, type, p1Charts, p2Charts, hiddenCount: typeHiddenCount }) => {
                       const uid = `${song.songId}_${type}`;
                       
                       const isGloballyHiddenType = hiddenCharts.includes(uid);
@@ -556,6 +553,26 @@ export default function PairSelectionApplet() {
                           );
                       };
 
+                      if (isGloballyHiddenType) {
+                          return (
+                              <div key={uid} className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-3 flex items-center justify-between group grayscale opacity-60 hover:opacity-90 hover:grayscale-0 transition-all">
+                                  <div className="flex items-center gap-3 truncate">
+                                      <EyeOff size={16} className="text-gray-500 shrink-0" />
+                                      <div className="truncate">
+                                          <div className="text-sm font-bold text-gray-300 truncate">{song.title}</div>
+                                          <div className="text-[10px] text-gray-500 uppercase">{type} Variant • Hidden</div>
+                                      </div>
+                                  </div>
+                                  <button 
+                                      onClick={() => setHiddenCharts(prev => prev.filter(x => x !== uid))}
+                                      className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg text-xs font-bold transition-colors border border-gray-700"
+                                  >
+                                      Unhide
+                                  </button>
+                              </div>
+                          );
+                      }
+
                       return (
                       <div key={uid} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col sm:flex-row shadow-lg relative group">
                         {/* Img Column with Badges / Hide Action */}
@@ -567,17 +584,15 @@ export default function PairSelectionApplet() {
                               alt={song.title}
                           />
                           {/* Top Left Global Hide Box */}
-                          {!isGloballyHiddenType && (
-                              <div className="absolute top-2 left-2 z-10 transition-opacity">
-                                  <button 
-                                    onClick={() => handleHide(uid)} 
-                                    className="w-10 h-10 bg-black/60 hover:bg-red-600 backdrop-blur-sm rounded-lg flex items-center justify-center text-white/50 hover:text-white border border-white/20 hover:border-red-400 transition-all shadow-lg"
-                                    title={`Globally Hide ${type} variant for this song`}
-                                  >
-                                      &times;
-                                  </button>
-                              </div>
-                          )}
+                          <div className="absolute top-2 left-2 z-10 transition-opacity">
+                              <button 
+                                onClick={() => handleHide(uid)} 
+                                className="w-10 h-10 bg-black/60 hover:bg-red-600 backdrop-blur-sm rounded-lg flex items-center justify-center text-white/50 hover:text-white border border-white/20 hover:border-red-400 transition-all shadow-lg"
+                                title={`Globally Hide ${type} variant for this song`}
+                              >
+                                  &times;
+                              </button>
+                          </div>
                           
                           {/* Bottom Right Type Identifier */}
                           <div className={`absolute bottom-2 right-2 px-3 py-1 font-black text-sm rounded shadow-lg backdrop-blur-sm tracking-wider ${type === 'DX' ? 'bg-blue-600/80 text-white border border-blue-400/50' : 'bg-green-600/80 text-white border border-green-400/50'}`}>
@@ -589,14 +604,14 @@ export default function PairSelectionApplet() {
                         <div className="flex-1 p-5 flex flex-col">
                             <div className="mb-4 flex flex-col items-start justify-between">
                               <div className="flex items-center justify-between w-full">
-                                  <a href={`https://zetaraku.dev/maimai/song/?id=${encodeURIComponent(song.songId)}`} target="_blank" rel="noreferrer" className="text-xl font-bold leading-tight mb-1 hover:text-purple-400 hover:underline transition-colors flex items-center gap-2">
+                                  <a href={`https://arcade-songs.zetaraku.dev/maimai/?title=${encodeURIComponent(song.title)}`} target="_blank" rel="noreferrer" className="text-xl font-bold leading-tight mb-1 hover:text-purple-400 hover:underline transition-colors flex items-center gap-2">
                                       {song.title} <span className="text-[10px] text-gray-500 whitespace-nowrap hidden sm:inline-block font-normal bg-gray-800 px-1.5 py-0.5 rounded leading-none border border-gray-700">↗ ZETARAKU</span>
                                   </a>
                                   
-                                  {hiddenCount > 0 && (
-                                      <button onClick={() => setShowHiddenModal(true)} className="text-xs text-orange-400 bg-orange-900/20 px-2 py-1 rounded border border-orange-900/50 hover:text-orange-300 whitespace-nowrap">
-                                          Charts Hidden ({hiddenCount})
-                                      </button>
+                                  {typeHiddenCount > 0 && !isGloballyHiddenType && (
+                                      <div className="text-xs text-orange-400 bg-orange-900/20 px-2 py-1 rounded border border-orange-900/50 flex items-center gap-1.5 whitespace-nowrap">
+                                          <EyeOff size={12} /> {typeHiddenCount} Chart{typeHiddenCount > 1 ? 's' : ''} Omitted
+                                      </div>
                                   )}
                               </div>
                               <p className="text-sm text-gray-400 line-clamp-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -611,15 +626,15 @@ export default function PairSelectionApplet() {
                               <div className="bg-blue-900/10 border border-blue-900/30 rounded-xl p-3 flex flex-col">
                                   <h4 className="text-xs font-bold text-blue-400 mb-2 border-b border-blue-900/50 pb-1 uppercase tracking-wider flex justify-between items-center">
                                       <span>Player 1 Options</span>
-                                      <span className="text-[10px] bg-blue-950 px-1.5 py-0.5 rounded">{p1Charts.length} Hits</span>
+                                      <span className="text-[10px] bg-blue-950 px-1.5 py-0.5 rounded">{p1Charts.filter(c => !hiddenCharts.includes(c.id)).length} Hits</span>
                                   </h4>
                                   <div className="flex flex-col gap-1">
-                                      {p1Charts.length > 0 ? (
-                                           p1Charts.map(c => renderChartRow(c, 1))
+                                      {p1Charts.filter(c => !hiddenCharts.includes(c.id)).length > 0 ? (
+                                           p1Charts.filter(c => !hiddenCharts.includes(c.id)).map(c => renderChartRow(c, 1))
                                       ) : (
                                           <div className="flex-1 flex flex-col items-center justify-center text-center p-2 opacity-50">
                                               <EyeOff size={16} className="text-blue-900 mb-1" />
-                                              <p className="text-xs font-medium">No active matches (Outside range or hidden)</p>
+                                              <p className="text-xs font-medium">None active</p>
                                           </div>
                                       )}
                                   </div>
@@ -629,15 +644,15 @@ export default function PairSelectionApplet() {
                               <div className="bg-rose-900/10 border border-rose-900/30 rounded-xl p-3 flex flex-col">
                                   <h4 className="text-xs font-bold text-rose-400 mb-2 border-b border-rose-900/50 pb-1 uppercase tracking-wider flex justify-between items-center">
                                       <span>Player 2 Options</span>
-                                      <span className="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded">{p2Charts.length} Hits</span>
+                                      <span className="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded">{p2Charts.filter(c => !hiddenCharts.includes(c.id)).length} Hits</span>
                                   </h4>
                                   <div className="flex flex-col gap-1">
-                                      {p2Charts.length > 0 ? (
-                                           p2Charts.map(c => renderChartRow(c, 2))
+                                      {p2Charts.filter(c => !hiddenCharts.includes(c.id)).length > 0 ? (
+                                           p2Charts.filter(c => !hiddenCharts.includes(c.id)).map(c => renderChartRow(c, 2))
                                       ) : (
                                           <div className="flex-1 flex flex-col items-center justify-center text-center p-2 opacity-50">
                                               <EyeOff size={16} className="text-rose-900 mb-1" />
-                                              <p className="text-xs font-medium">No active matches (Outside range or hidden)</p>
+                                              <p className="text-xs font-medium">None active</p>
                                           </div>
                                       )}
                                   </div>
