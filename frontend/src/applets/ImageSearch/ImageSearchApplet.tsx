@@ -4,8 +4,9 @@ import Cropper, { ReactCropperElement } from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
 import { 
   ImageIcon, Copy, RefreshCw, 
-  ZoomIn, ZoomOut, Move, Crop as CropIcon 
+  ZoomIn, ZoomOut, Move, Crop as CropIcon, Camera, CornerUpRight
 } from 'lucide-react';
+import PerspectiveCropper from './PerspectiveCropper';
 
 // Define TS Interfaces
 interface MatchResult {
@@ -45,8 +46,10 @@ export default function ImageSearchApplet() {
   // App state
   const [queryImageFile, setQueryImageFile] = useState<File | Blob | null>(null);
   const [queryImageUrl, setQueryImageUrl] = useState<string | null>(null);
-  const [results, setResults] = useState<MatchResult[]>([]);
-  const [metrics, setMetrics] = useState('');
+  const [results, setResults] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<string>('');
+  const [isPerspectiveMode, setIsPerspectiveMode] = useState(false);
+  const [warpPoints, setWarpPoints] = useState<{x: number, y: number}[]>([]);
   
   const cropperRef = useRef<ReactCropperElement>(null);
 
@@ -158,14 +161,19 @@ export default function ImageSearchApplet() {
     if (queryImageFile && queryImageUrl) performSearch(queryImageFile, queryImageUrl);
   };
 
-  const performSearch = async (image: Blob | File, objUrl: string) => {
+  const handleSearchPerspective = async () => {
+    if (!queryImageUrl) return;
+    performSearch(null, queryImageUrl, true);
+  };
+
+  const performSearch = async (image: Blob | File | null, objUrl: string, usePerspective: boolean = false) => {
     setLoading(true);
     setResults([]);
     searchCancelledRef.current = false;
-    await searchLocal(image, objUrl);
+    await searchLocal(image, objUrl, usePerspective);
   };
 
-  const searchLocal = async (_file: Blob | File, objUrl: string) => {
+  const searchLocal = async (_file: Blob | File | null, objUrl: string, usePerspective: boolean = false) => {
     // @ts-ignore
     if (!window.cv || !localDbRef.current) {
       alert("Local environment not fully loaded.");
@@ -176,7 +184,8 @@ export default function ImageSearchApplet() {
     const cv = window.cv;
 
     // Check Cache
-    if (objUrl === featureCacheRef.current.objUrl && 
+    if (!usePerspective && 
+        objUrl === featureCacheRef.current.objUrl && 
         maxSize === featureCacheRef.current.maxSize && 
         maxFeatures === featureCacheRef.current.maxFeatures && 
         featureCacheRef.current.queryDesc) {
@@ -195,7 +204,33 @@ export default function ImageSearchApplet() {
           const src = new cv.Mat();
           let currentMetrics = "";
 
-          if (srcRaw.cols > maxSize || srcRaw.rows > maxSize) {
+          if (usePerspective && warpPoints.length === 4) {
+             // Perform Warp
+             const srcCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                warpPoints[0].x, warpPoints[0].y,
+                warpPoints[1].x, warpPoints[1].y,
+                warpPoints[2].x, warpPoints[2].y,
+                warpPoints[3].x, warpPoints[3].y
+             ]);
+             
+             // Define normalized 600x600 chart output
+             const side = 600;
+             const dstCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                0, 0,
+                side, 0,
+                side, side,
+                0, side
+             ]);
+             
+             const M = cv.getPerspectiveTransform(srcCoords, dstCoords);
+             const dsize = new cv.Size(side, side);
+             cv.warpPerspective(srcRaw, src, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+             
+             currentMetrics = `Perspective Warp Applied: ${side}x${side}\nPoints: ${warpPoints.map(p => `(${Math.round(p.x)}, ${Math.round(p.y)})`).join(' ')}`;
+             
+             // Cleanup mat
+             srcCoords.delete(); dstCoords.delete(); M.delete();
+          } else if (srcRaw.cols > maxSize || srcRaw.rows > maxSize) {
             let scale = maxSize / Math.max(srcRaw.cols, srcRaw.rows);
             let dsize = new cv.Size(Math.round(srcRaw.cols * scale), Math.round(srcRaw.rows * scale));
             cv.resize(srcRaw, src, dsize, 0, 0, cv.INTER_AREA);
@@ -438,7 +473,7 @@ export default function ImageSearchApplet() {
               <div className="mt-4">
                 <span className="text-xs text-gray-400 mb-2 block">Difficulty:</span>
                 <div className="flex flex-wrap gap-1">
-                  {['All', 'Basic', 'Advanced', 'Expert', 'Master', 'Re:MASTER'].map(diff => (
+                  {['All', 'Basic', 'Advanced', 'Expert', 'Master', 'Re:MASTER'].map((diff: string) => (
                     <button 
                       key={diff} 
                       onClick={() => toggleDifficulty(diff)}
@@ -493,9 +528,28 @@ export default function ImageSearchApplet() {
                 onClick={() => document.getElementById('file-input')?.click()}
               >
                 <input type="file" id="file-input" className="hidden" accept="image/*" onChange={handleFileInput} />
+                <input type="file" id="camera-input" className="hidden" accept="image/*" capture="environment" onChange={handleFileInput} />
+                
                 <ImageIcon className="h-16 w-16 text-blue-500 mb-4" />
-                <h2 className="text-2xl font-bold mb-2">Click to Upload or Drag & Drop</h2>
-                <p className="text-gray-400">You can also paste (Ctrl+V) a screenshot directly</p>
+                <h2 className="text-2xl font-bold mb-2 text-white">Upload or Take a Photo</h2>
+                <p className="text-gray-400 mb-8">Take a photo on mobile, drag & drop, or paste an image</p>
+                
+                <div className="flex gap-4 w-full max-w-sm">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); document.getElementById('camera-input')?.click(); }}
+                    className="flex-1 flex flex-col items-center gap-2 bg-blue-600 hover:bg-blue-500 p-4 rounded-2xl transition-all shadow-lg"
+                  >
+                    <Camera size={32} />
+                    <span className="font-bold">Camera</span>
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); document.getElementById('file-input')?.click(); }}
+                    className="flex-1 flex flex-col items-center gap-2 bg-gray-700 hover:bg-gray-600 p-4 rounded-2xl transition-all shadow-lg border border-gray-600"
+                  >
+                    <ImageIcon size={32} />
+                    <span className="font-bold">Files</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 flex flex-col overflow-hidden">
@@ -509,37 +563,70 @@ export default function ImageSearchApplet() {
                 </div>
                 <p className="text-gray-400 mb-4 text-sm">Use the controls below to zoom, pan, or draw a new crop box.</p>
                 
-                <div className="w-full flex-grow max-h-[500px] min-h-[300px] bg-black rounded-lg overflow-hidden mb-4 border border-gray-700">
-                  <Cropper
-                    ref={cropperRef}
-                    src={queryImageUrl}
-                    style={{ height: "100%", width: "100%" }}
-                    viewMode={1}
-                    dragMode="crop"
-                    autoCropArea={0.8}
-                    guides={true}
-                    background={true}
-                    toggleDragModeOnDblclick={true}
-                    zoomOnWheel={false}
-                  />
+                <div className="w-full flex-grow max-h-[500px] min-h-[300px] bg-black rounded-lg overflow-hidden mb-4 border border-gray-700 relative">
+                  {isPerspectiveMode ? (
+                    <PerspectiveCropper 
+                      image={queryImageUrl} 
+                      onPointsChange={setWarpPoints}
+                    />
+                  ) : (
+                    <Cropper
+                      ref={cropperRef}
+                      src={queryImageUrl}
+                      style={{ height: "100%", width: "100%" }}
+                      viewMode={1}
+                      dragMode="crop"
+                      autoCropArea={0.8}
+                      guides={true}
+                      background={true}
+                      toggleDragModeOnDblclick={true}
+                      zoomOnWheel={false}
+                    />
+                  )}
                 </div>
 
                 <div className="flex gap-2 justify-center mb-6 flex-wrap">
-                  <button onClick={() => cropperRef.current?.cropper.zoom(0.1)} title="Zoom In" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomIn size={20}/></button>
-                  <button onClick={() => cropperRef.current?.cropper.zoom(-0.1)} title="Zoom Out" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomOut size={20}/></button>
-                  <button onClick={() => cropperRef.current?.cropper.setDragMode('move')} title="Pan Image" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><Move size={20}/></button>
-                  <button onClick={() => cropperRef.current?.cropper.setDragMode('crop')} title="Draw Crop Box" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><CropIcon size={20}/></button>
+                  {!isPerspectiveMode ? (
+                    <>
+                      <button onClick={() => cropperRef.current?.cropper.zoom(0.1)} title="Zoom In" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomIn size={20}/></button>
+                      <button onClick={() => cropperRef.current?.cropper.zoom(-0.1)} title="Zoom Out" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomOut size={20}/></button>
+                      <button onClick={() => cropperRef.current?.cropper.setDragMode('move')} title="Pan Image" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><Move size={20}/></button>
+                      <button onClick={() => cropperRef.current?.cropper.setDragMode('crop')} title="Draw Crop Box" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><CropIcon size={20}/></button>
+                      <button 
+                        onClick={() => setIsPerspectiveMode(true)} 
+                        title="Switch to Perspective Fix" 
+                        className="p-3 bg-purple-900/40 text-purple-400 border border-purple-800/50 hover:bg-purple-900/60 rounded-lg transition-all flex items-center gap-2 font-bold px-4"
+                      >
+                        <CornerUpRight size={20}/> Perspective Fix
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => setIsPerspectiveMode(false)} 
+                      className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition-colors"
+                    >
+                      Back to Standard Crop
+                    </button>
+                  )}
                 </div>
 
                 {metrics && <pre className="text-xs text-gray-400 mb-6 bg-gray-900 p-4 rounded-lg overflow-x-auto whitespace-pre-wrap">{metrics}</pre>}
 
                 <div className="flex gap-4 justify-center flex-wrap">
-                  <button onClick={handleSearchCropped} disabled={loading} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl disabled:opacity-50 transition-colors">
-                    Search Cropped Area
-                  </button>
-                  <button onClick={handleSearchFull} disabled={loading} className="px-6 py-3 border border-gray-600 hover:bg-gray-700 font-bold rounded-xl disabled:opacity-50 transition-colors">
-                    Search Full Image
-                  </button>
+                  {isPerspectiveMode ? (
+                     <button onClick={handleSearchPerspective} disabled={loading} className="px-8 py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl shadow-lg transition-all flex items-center gap-2">
+                        <CornerUpRight size={20} /> Fix & Search Perspective
+                     </button>
+                  ) : (
+                    <>
+                      <button onClick={handleSearchCropped} disabled={loading} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl disabled:opacity-50 transition-colors">
+                        Search Cropped Area
+                      </button>
+                      <button onClick={handleSearchFull} disabled={loading} className="px-6 py-3 border border-gray-600 hover:bg-gray-700 font-bold rounded-xl disabled:opacity-50 transition-colors">
+                        Search Full Image
+                      </button>
+                    </>
+                  )}
                   <button 
                     onClick={() => { setQueryImageUrl(null); setQueryImageFile(null); setResults([]); }} 
                     disabled={loading} 
@@ -575,9 +662,9 @@ export default function ImageSearchApplet() {
              </div>
              
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-               {results.map((match, idx) => {
-                 const hasDx = match.charts?.some(c => (c.type || '').toLowerCase().includes('dx'));
-                 const hasStd = match.charts?.some(c => (c.type || '').toLowerCase().includes('std') || (c.type || '').toLowerCase().includes('standard'));
+               {results.map((match: any, idx: number) => {
+                 const hasDx = match.charts?.some((c: any) => (c.type || '').toLowerCase().includes('dx'));
+                 const hasStd = match.charts?.some((c: any) => (c.type || '').toLowerCase().includes('std') || (c.type || '').toLowerCase().includes('standard'));
                  
                  const getDiffColor = (diff: string) => {
                    switch (diff.toLowerCase()) {
@@ -591,8 +678,8 @@ export default function ImageSearchApplet() {
                  };
 
                  // Filter charts to display only the ones matching the selected difficulty
-                 const displayCharts = match.charts?.filter(c => {
-                    const diffMatch = difficultyFilter.includes('All') || difficultyFilter.some(d => d.toLowerCase().replace(':', '') === (c.difficulty || '').toLowerCase().replace(':', ''));
+                 const displayCharts = match.charts?.filter((c: any) => {
+                    const diffMatch = difficultyFilter.includes('All') || difficultyFilter.some((d: string) => d.toLowerCase().replace(':', '') === (c.difficulty || '').toLowerCase().replace(':', ''));
                     const levelMatch = parseFloat(c.internalLevel || c.level || 0) >= minLevel && parseFloat(c.internalLevel || c.level || 0) <= maxLevel;
                     let rawType = (c.type || '').toLowerCase();
                     const typeMatch = (chartTypeFilter.includes('DX') && rawType.includes('dx')) || 
