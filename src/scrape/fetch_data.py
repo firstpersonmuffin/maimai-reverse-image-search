@@ -47,6 +47,7 @@ def main():
                     'imageName': song['imageName'],
                     'version': song.get('version', ''),
                     'releaseDate': song.get('releaseDate', ''),
+                    'intl': str(sheet.get('regions', {}).get('intl', False)),
                     'difficulty': sheet.get('difficulty'),
                     'type': sheet.get('type'),
                     'level': sheet.get('level'),

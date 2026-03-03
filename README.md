@@ -1,6 +1,6 @@
-# maimai Reverse Image Search
+# maimai Tools Portal
 
-A reverse image search engine that identifies maimai charts from screenshots. Developed primarily to help players identify level 13+ charts and above from standard play setups or clips.
+A collection of web-based utilities for maimai players, including a Reverse Image Search engine and a Pair Selection tool.
 
 ## Project Structure
 
@@ -8,10 +8,9 @@ A reverse image search engine that identifies maimai charts from screenshots. De
 - `src/processing`: Core computer vision algorithms, built on OpenCV's SIFT descriptors and Flann based matching.
 - `src/applet/backend`: A robust FastAPI backend exposing search functionality and statically serving the web frontend.
 - `models`: Stores the precomputed `sift_cache.pkl` built from the chart thumbnails.
-- `data`:
   - `raw/thumbnails`: Raw scraped image files for chart covers.
   - `processed/metadata.csv`: Parsed song metadata mapping for fast retrieval.
-- `web`: Sleek, dynamic Vanilla JS frontend with drag-and-drop and clipboard paste capability.
+- `frontend`: React-based web portal containing multiple applets (Reverse Image Search, Pair Selection) styled with Tailwind CSS v4.
 
 ## Installation
 
@@ -53,8 +52,15 @@ A reverse image search engine that identifies maimai charts from screenshots. De
 
 ## Usage
 
-Once the interface is open, you have two ways to search:
-1. **File Upload via Drag and Drop:** Drag any cropped or uncropped screenshot of a maimai chart into the upload zone, or click it to browse files.
-2. **Clipboard Paste:** Copy an image to your clipboard and simply press `Ctrl+V` while on the webpage. 
+The application serves as a portal with multiple applets:
 
-The application will process the image locally and display the top 5 match candidates in a beautifully styled grid, including the predicted song's title, artist, version, and thumbnail cover.
+### 1. Reverse Image Search
+- **File Upload via Drag and Drop:** Drag any cropped or uncropped screenshot of a maimai chart into the upload zone, or click it to browse files.
+- **Clipboard Paste:** Copy an image to your clipboard and simply press `Ctrl+V` while on the webpage. 
+- The application processes the image locally (via OpenCV WebAssembly) and displays the top matches, allowing robust difficulty and type filtering.
+
+### 2. Pair Selection
+- **Player Filtering:** Select rating brackets for Player 1 and Player 2 (<10k, 10k-15k in 500 increments, 15k-16.2k in 100 increments).
+- **Chart Filtering:** Set internal level bounds and toggle STD/DX types.
+- **Hidden Charts:** Hide specific charts per player using the "X" button (persisted in local storage). Easily unhide charts fitting the current filter criteria.
+- **Matching:** Automatically finds and displays chart difficulties that simultaneously satisfy the constraints for both players.

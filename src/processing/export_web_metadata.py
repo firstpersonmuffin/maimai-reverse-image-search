@@ -4,6 +4,7 @@ import pandas as pd
 
 PROCESSED_DIR = os.path.join('data', 'processed')
 WEB_DIR = os.path.join('web')
+FRONTEND_DIR = os.path.join('frontend', 'public')
 
 def main():
     metadata_csv = os.path.join(PROCESSED_DIR, 'metadata.csv')
@@ -24,6 +25,7 @@ def main():
                 'artist': str(row['artist']),
                 'version': str(row['version']),
                 'releaseDate': str(row.get('releaseDate', '')),
+                'intl': str(row.get('intl', '')),
                 'charts': []
             }
             
@@ -35,18 +37,28 @@ def main():
         })
 
     out_file = os.path.join(WEB_DIR, 'metadata.json')
-    with open(out_file, 'w') as f:
-        json.dump(db, f)
+    out_file_front = os.path.join(FRONTEND_DIR, 'metadata.json')
+    
+    for f_path in [out_file, out_file_front]:
+        os.makedirs(os.path.dirname(f_path), exist_ok=True)
+        with open(f_path, 'w') as f:
+            json.dump(db, f)
         
-    print(f"Exported metadata for {len(db)} images to {out_file}")
+    print(f"Exported metadata for {len(db)} images to {out_file} and {out_file_front}")
 
     # Export last updated info
     import datetime
     mtime = os.path.getmtime(metadata_csv)
     last_updated = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
+    
     info_file = os.path.join(WEB_DIR, 'info.json')
-    with open(info_file, 'w') as f:
-        json.dump({'lastUpdated': last_updated}, f)
+    info_file_front = os.path.join(FRONTEND_DIR, 'info.json')
+    
+    for f_path in [info_file, info_file_front]:
+        os.makedirs(os.path.dirname(f_path), exist_ok=True)
+        with open(f_path, 'w') as f:
+            json.dump({'lastUpdated': last_updated}, f)
+            
     print(f"Exported info.json with lastUpdated: {last_updated}")
 
 if __name__ == '__main__':

@@ -1,0 +1,116 @@
+[
+    {
+        "label": "< 10k",
+        "min": 9.0,
+        "max": 10.5,
+        "color": "default"
+    },
+    {
+        "label": "10k - 11k",
+        "min": 9.6,
+        "max": 11.5,
+        "color": "purple"
+    },
+    {
+        "label": "11k - 12k",
+        "min": 10.6,
+        "max": 12.5,
+        "color": "purple"
+    },
+    {
+        "label": "12k - 13k",
+        "min": 11.6,
+        "max": 12.9,
+        "color": "brown"
+    },
+    {
+        "label": "13k - 14k",
+        "min": 12.6,
+        "max": 13.9,
+        "color": "silver"
+    },
+    {
+        "label": "14k - 14.5k",
+        "min": 12.9,
+        "max": 14.0,
+        "color": "gold"
+    },
+    {
+        "label": "14.5k - 15k",
+        "min": 13.4,
+        "max": 14.0,
+        "color": "shiny-gold"
+    },
+    {
+        "label": "15k - 15.1k",
+        "min": 13.5,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.1k - 15.2k",
+        "min": 13.5,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.2k - 15.3k",
+        "min": 13.6,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.3k - 15.4k",
+        "min": 13.7,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.4k - 15.5k",
+        "min": 13.8,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.5k - 15.6k",
+        "min": 13.9,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.6k - 15.7k",
+        "min": 14.0,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.7k - 15.8k",
+        "min": 14.1,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.8k - 15.9k",
+        "min": 14.2,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "15.9k - 16.0k",
+        "min": 14.3,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "16.0k - 16.1k",
+        "min": 14.4,
+        "max": 15.0,
+        "color": "rainbow"
+    },
+    {
+        "label": "16.1k - 16.2k",
+        "min": 14.4,
+        "max": 15.0,
+        "color": "rainbow"
+    }
+]

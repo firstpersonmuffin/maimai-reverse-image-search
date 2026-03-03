@@ -60,3 +60,14 @@ models/*.h5
 
 # Build Directories
 # (Intentionally leaving docs/ un-ignored for GitHub Pages deployment)
+
+# Local Mocks
+mock_deploy/
+
+# Frontend / Node 
+node_modules/
+frontend/dist/
+frontend/node_modules/
+frontend/.env.local
+frontend/.env.*.local
+.DS_Store
