@@ -75,7 +75,7 @@ export default function PairSelectionApplet() {
 
   // Filters
   const [chartTypeFilter, setChartTypeFilter] = useState<string[]>(['DX', 'STD']);
-  const [versionFilter, setVersionFilter] = useState<string[]>(['All']);
+  const [versionFilter, setVersionFilter] = useState<string[]>([]);
   const [availableVersions, setAvailableVersions] = useState<{label: string, value: string}[]>([]);
   const [resultsLimit, setResultsLimit] = useState(10);
   
@@ -121,11 +121,13 @@ export default function PairSelectionApplet() {
         }
 
         // Safe Versions Fetch
+        let vDataForAutoSelect: {label: string, value: string}[] = [];
         try {
             const vRes = await fetch(`${import.meta.env.BASE_URL}versions.json`);
             if (vRes.ok) {
                 const vData = await vRes.json();
                 setAvailableVersions(vData);
+                vDataForAutoSelect = vData;
             }
         } catch (err) {
             console.warn("Could not fetch versions.json");
@@ -141,6 +143,15 @@ export default function PairSelectionApplet() {
             processed[key] = { ...(val as any), imageName: key };
         }
         setMetadata(processed);
+
+        // Pre-select all versions by default if versionFilter is empty
+        // We use the functional update to avoid capturing stale versionFilter state
+        setVersionFilter(prev => {
+            if (prev.length === 0 && vDataForAutoSelect.length > 0) {
+                return vDataForAutoSelect.map(v => v.value);
+            }
+            return prev;
+        });
         
       } catch (e) {
         console.error(e);
@@ -182,7 +193,7 @@ export default function PairSelectionApplet() {
         }
         
         // Exclude version non-matches
-        if (!versionFilter.includes('All') && !versionFilter.includes(song.version || '')) {
+        if (versionFilter.length > 0 && !versionFilter.includes(song.version || '')) {
             continue;
         }
 
@@ -260,20 +271,21 @@ export default function PairSelectionApplet() {
   const getChartId = (song: SongData, chart: Chart) => `${song.songId}_${chart.type}`;
 
   const toggleVersion = (ver: string) => {
-      if (ver === 'All') {
-          setVersionFilter(['All']);
-          return;
-      }
-      
       setVersionFilter(prev => {
-          const next = prev.filter(v => v !== 'All');
-          if (next.includes(ver)) {
-              const without = next.filter(v => v !== ver);
-              return without.length === 0 ? ['All'] : without;
+          if (prev.includes(ver)) {
+              return prev.filter(v => v !== ver);
           } else {
-              return [...next, ver];
+              return [...prev, ver];
           }
       });
+  };
+
+  const selectAllVersions = () => {
+      setVersionFilter(availableVersions.map(v => v.value));
+  };
+
+  const selectNoVersions = () => {
+      setVersionFilter([]);
   };
 
   const handleHide = (chartId: string) => {
@@ -383,18 +395,18 @@ export default function PairSelectionApplet() {
                 <span>Internal Level {pState.activeBracket && "(Locked to Bracket)"}</span>
                 <span className="font-bold">{pState.minLevel.toFixed(1)} - {pState.maxLevel.toFixed(1)}</span>
             </label>
-            <div className={`relative h-6 mt-3 ${pState.activeBracket ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-                <input type="range" min="0" max="15" step="0.1" value={pState.minLevel} onChange={(e) => {
+            <div className={`relative h-6 mt-3`}>
+                <input type="range" min="9" max="15" step="0.1" value={pState.minLevel} onChange={(e) => {
                     const val = Math.min(Number(e.target.value), pState.maxLevel);
                     setPState(s => ({...s, minLevel: val, activeBracket: null}));
                 }} className={`absolute w-full pointer-events-none appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 ${num === 1 ? '[&::-webkit-slider-thumb]:bg-blue-500' : '[&::-webkit-slider-thumb]:bg-rose-500'} [&::-webkit-slider-thumb]:rounded-full z-20`} />
-                <input type="range" min="0" max="15" step="0.1" value={pState.maxLevel} onChange={(e) => {
+                <input type="range" min="9" max="15" step="0.1" value={pState.maxLevel} onChange={(e) => {
                     const val = Math.max(Number(e.target.value), pState.minLevel);
                     setPState(s => ({...s, maxLevel: val, activeBracket: null}));
                 }} className={`absolute w-full pointer-events-none appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 ${num === 1 ? '[&::-webkit-slider-thumb]:bg-blue-500' : '[&::-webkit-slider-thumb]:bg-rose-500'} [&::-webkit-slider-thumb]:rounded-full z-30`} />
                 
                 <div className="absolute w-full h-1.5 bg-gray-700/50 rounded-full top-1 z-0"></div>
-                <div className={`absolute h-1.5 rounded-full top-1 z-10 ${num === 1 ? 'bg-blue-500' : 'bg-rose-500'}`} style={{ left: `${(pState.minLevel / 15) * 100}%`, right: `${100 - (pState.maxLevel / 15) * 100}%` }}></div>
+                <div className={`absolute h-1.5 rounded-full top-1 z-10 ${num === 1 ? 'bg-blue-500' : 'bg-rose-500'}`} style={{ left: `${((pState.minLevel - 9) / 6) * 100}%`, right: `${100 - ((pState.maxLevel - 9) / 6) * 100}%` }}></div>
             </div>
         </div>
     </div>
@@ -442,6 +454,19 @@ export default function PairSelectionApplet() {
                <div className="flex flex-col gap-3 pt-6 border-t border-gray-800">
                     <span className="text-sm font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Versions</span>
                     <div className="flex flex-wrap gap-2">
+                        <button 
+                            onClick={selectAllVersions}
+                            className={`px-3 py-1.5 text-xs font-black rounded-lg transition-colors border bg-gray-700 border-gray-600 text-white hover:bg-gray-600`}
+                        >
+                            Select All
+                        </button>
+                        <button 
+                            onClick={selectNoVersions}
+                            className={`px-3 py-1.5 text-xs font-black rounded-lg transition-colors border bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700`}
+                        >
+                            None
+                        </button>
+                        <div className="w-px h-6 bg-gray-800 mx-1"></div>
                         {availableVersions.map(v => (
                             <button 
                                 key={v.value} 
@@ -458,14 +483,17 @@ export default function PairSelectionApplet() {
                <div className="flex flex-col md:flex-row items-start md:items-center gap-6 w-full pt-4 border-t border-gray-800/50">
                   <div className="flex items-center gap-6 flex-1">
                       <span className="text-sm font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap flex items-center justify-between min-w-[120px]">
-                         Max Results <span className="text-gray-200 ml-4">{resultsLimit}</span>
+                         Max Results <span className="text-gray-200 ml-4">{resultsLimit > 40 ? 'Unbounded' : resultsLimit}</span>
                       </span>
                       <input 
                          type="range" 
-                         min="1" max="20" step="1" 
-                         value={resultsLimit} 
-                         onChange={(e) => setResultsLimit(Number(e.target.value))} 
-                         className="w-full max-w-[150px] accent-purple-500" 
+                         min="5" max="45" step="5" 
+                         value={resultsLimit > 40 ? 45 : resultsLimit} 
+                         onChange={(e) => {
+                             const val = Number(e.target.value);
+                             setResultsLimit(val > 40 ? 999999 : val);
+                         }} 
+                         className="w-full max-w-[200px] accent-purple-500" 
                       />
                   </div>
 
@@ -525,17 +553,23 @@ export default function PairSelectionApplet() {
                 </h2>
 
                 <div className="space-y-4">
-                  {matchedSongs.slice(0, resultsLimit).map(({ song, type, p1Charts, p2Charts }) => {
-                      const uid = `${song.songId}_${type}`;
-                      
-                      const isGloballyHiddenType = hiddenCharts.includes(uid);
-                      
-                      // Calculate reactive hidden count based on current hiddenCharts state
-                      const allMatchedChartsInThisCard = Array.from(new Set([...p1Charts, ...p2Charts].map(c => c.id)));
-                      const reactiveHiddenCount = allMatchedChartsInThisCard.filter(id => hiddenCharts.includes(id)).length;
+                  {(() => {
+                      let visibleIndex = 0;
+                      return matchedSongs.map(({ song, type, p1Charts, p2Charts }) => {
+                          const uid = `${song.songId}_${type}`;
+                          const isGloballyHiddenType = hiddenCharts.includes(uid);
+                          
+                          // Calculate reactive hidden count based on current hiddenCharts state
+                          const allMatchedChartsInThisCard = Array.from(new Set([...p1Charts, ...p2Charts].map(c => c.id)));
+                          const reactiveHiddenCount = allMatchedChartsInThisCard.filter(id => hiddenCharts.includes(id)).length;
 
-                      const renderChartRow = (c: ChartWithId, playerNum: 1 | 2) => {
-                          return (
+                          if (!isGloballyHiddenType) {
+                              visibleIndex++;
+                          }
+                          
+                          if (visibleIndex > resultsLimit && !isGloballyHiddenType) return null;
+
+                          const renderChartRow = (c: ChartWithId, playerNum: 1 | 2) => (
                               <div key={`${c.difficulty}-${playerNum}`} className="flex items-center justify-between bg-gray-950/50 rounded overflow-hidden mt-1">
                                   <div className="flex items-center">
                                       <span className={`px-2 py-1 text-[10px] font-bold uppercase min-w-[30px] text-center ${playerNum === 1 ? 'bg-blue-900/50 text-blue-300' : 'bg-rose-900/50 text-rose-300'}`}>
@@ -550,117 +584,110 @@ export default function PairSelectionApplet() {
                                   </div>
                               </div>
                           );
-                      };
 
-                      if (isGloballyHiddenType) {
-                          return (
-                              <div key={uid} className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-3 flex items-center justify-between group grayscale opacity-60 hover:opacity-90 hover:grayscale-0 transition-all">
-                                  <div className="flex items-center gap-3 truncate">
-                                      <EyeOff size={16} className="text-gray-500 shrink-0" />
-                                      <div className="truncate">
-                                          <div className="text-sm font-bold text-gray-300 truncate">{song.title}</div>
-                                          <div className="text-[10px] text-gray-500 uppercase">{type} Variant • Hidden</div>
+                          if (isGloballyHiddenType) {
+                              return (
+                                  <div key={uid} className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-3 flex items-center justify-between group grayscale opacity-60 hover:opacity-90 hover:grayscale-0 transition-all">
+                                      <div className="flex items-center gap-3 truncate">
+                                          <EyeOff size={16} className="text-gray-500 shrink-0" />
+                                          <div className="truncate">
+                                              <div className="text-sm font-bold text-gray-300 truncate">{song.title}</div>
+                                              <div className="text-[10px] text-gray-500 uppercase">{type} Variant • Hidden</div>
+                                          </div>
                                       </div>
+                                      <button 
+                                          onClick={() => setHiddenCharts(prev => prev.filter(x => x !== uid))}
+                                          className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg text-xs font-bold transition-colors border border-gray-700"
+                                      >
+                                          Unhide
+                                      </button>
                                   </div>
-                                  <button 
-                                      onClick={() => setHiddenCharts(prev => prev.filter(x => x !== uid))}
-                                      className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg text-xs font-bold transition-colors border border-gray-700"
-                                  >
-                                      Unhide
-                                  </button>
+                              );
+                          }
+
+                          return (
+                              <div key={uid} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col sm:flex-row shadow-lg relative group">
+                                <div className="w-full sm:w-48 h-48 flex-shrink-0 bg-black relative">
+                                  <img 
+                                      src={`https://dp4p6x0xfi5o9.cloudfront.net/maimai/img/cover/${song.imageName}`} 
+                                      onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/300?text=No+Image'}
+                                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                      alt={song.title}
+                                  />
+                                  <div className="absolute top-2 left-2 z-10 transition-opacity">
+                                      <button 
+                                        onClick={() => handleHide(uid)} 
+                                        className="w-10 h-10 bg-black/60 hover:bg-red-600 backdrop-blur-sm rounded-lg flex items-center justify-center text-white/50 hover:text-white border border-white/20 hover:border-red-400 transition-all shadow-lg"
+                                        title={`Globally Hide ${type} variant for this song`}
+                                      >
+                                          &times;
+                                      </button>
+                                  </div>
+                                  <div className={`absolute bottom-2 right-2 px-3 py-1 font-black text-sm rounded shadow-lg backdrop-blur-sm tracking-wider ${type === 'DX' ? 'bg-blue-600/80 text-white border border-blue-400/50' : 'bg-green-600/80 text-white border border-green-400/50'}`}>
+                                      {type}
+                                  </div>
+                                </div>
+
+                                <div className="flex-1 p-5 flex flex-col">
+                                    <div className="mb-4 flex flex-col items-start justify-between">
+                                      <div className="flex items-center justify-between w-full">
+                                          <a href={`https://arcade-songs.zetaraku.dev/maimai/?title=${encodeURIComponent(song.title)}`} target="_blank" rel="noreferrer" className="text-xl font-bold leading-tight mb-1 hover:text-purple-400 hover:underline transition-colors flex items-center gap-2">
+                                              {song.title} <span className="text-[10px] text-gray-500 whitespace-nowrap hidden sm:inline-block font-normal bg-gray-800 px-1.5 py-0.5 rounded leading-none border border-gray-700">↗ ZETARAKU</span>
+                                          </a>
+                                          
+                                          {reactiveHiddenCount > 0 && !isGloballyHiddenType && (
+                                              <div className="text-xs text-orange-400 bg-orange-900/20 px-2 py-1 rounded border border-orange-900/50 flex items-center gap-1.5 whitespace-nowrap">
+                                                  <EyeOff size={12} /> {reactiveHiddenCount} Chart{reactiveHiddenCount > 1 ? 's' : ''} Omitted
+                                              </div>
+                                          )}
+                                      </div>
+                                      <p className="text-sm text-gray-400 line-clamp-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                          <span>{song.artist}</span>
+                                          {song.releaseDate && <span className="text-gray-600 text-[10px] whitespace-nowrap">| {song.releaseDate}</span>}
+                                          {song.version && <span className="text-purple-400/80 text-[9px] uppercase font-bold whitespace-nowrap tracking-wider bg-purple-900/30 px-1.5 py-0.5 rounded">[{song.version}]</span>}
+                                      </p>
+                                    </div>
+                                    
+                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div className="bg-blue-900/10 border border-blue-900/30 rounded-xl p-3 flex flex-col">
+                                          <h4 className="text-xs font-bold text-blue-400 mb-2 border-b border-blue-900/50 pb-1 uppercase tracking-wider flex justify-between items-center">
+                                              <span>Player 1 Options</span>
+                                              <span className="text-[10px] bg-blue-950 px-1.5 py-0.5 rounded">{p1Charts.filter(c => !hiddenCharts.includes(c.id)).length} Hits</span>
+                                          </h4>
+                                          <div className="flex flex-col gap-1">
+                                              {p1Charts.filter(c => !hiddenCharts.includes(c.id)).length > 0 ? (
+                                                   p1Charts.filter(c => !hiddenCharts.includes(c.id)).map(c => renderChartRow(c, 1))
+                                              ) : (
+                                                  <div className="flex-1 flex flex-col items-center justify-center text-center p-2 opacity-50">
+                                                      <EyeOff size={16} className="text-blue-900 mb-1" />
+                                                      <p className="text-xs font-medium">None active</p>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      </div>
+                                      
+                                      <div className="bg-rose-900/10 border border-rose-900/30 rounded-xl p-3 flex flex-col">
+                                          <h4 className="text-xs font-bold text-rose-400 mb-2 border-b border-rose-900/50 pb-1 uppercase tracking-wider flex justify-between items-center">
+                                              <span>Player 2 Options</span>
+                                              <span className="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded">{p2Charts.filter(c => !hiddenCharts.includes(c.id)).length} Hits</span>
+                                          </h4>
+                                          <div className="flex flex-col gap-1">
+                                              {p2Charts.filter(c => !hiddenCharts.includes(c.id)).length > 0 ? (
+                                                   p2Charts.filter(c => !hiddenCharts.includes(c.id)).map(c => renderChartRow(c, 2))
+                                              ) : (
+                                                  <div className="flex-1 flex flex-col items-center justify-center text-center p-2 opacity-50">
+                                                      <EyeOff size={16} className="text-rose-900 mb-1" />
+                                                      <p className="text-xs font-medium">None active</p>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      </div>
+                                    </div>
+                                </div>
                               </div>
                           );
-                      }
-
-                      return (
-                      <div key={uid} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col sm:flex-row shadow-lg relative group">
-                        {/* Img Column with Badges / Hide Action */}
-                        <div className="w-full sm:w-48 h-48 flex-shrink-0 bg-black relative">
-                          <img 
-                              src={`https://dp4p6x0xfi5o9.cloudfront.net/maimai/img/cover/${song.imageName}`} 
-                              onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/300?text=No+Image'}
-                              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                              alt={song.title}
-                          />
-                          {/* Top Left Global Hide Box */}
-                          <div className="absolute top-2 left-2 z-10 transition-opacity">
-                              <button 
-                                onClick={() => handleHide(uid)} 
-                                className="w-10 h-10 bg-black/60 hover:bg-red-600 backdrop-blur-sm rounded-lg flex items-center justify-center text-white/50 hover:text-white border border-white/20 hover:border-red-400 transition-all shadow-lg"
-                                title={`Globally Hide ${type} variant for this song`}
-                              >
-                                  &times;
-                              </button>
-                          </div>
-                          
-                          {/* Bottom Right Type Identifier */}
-                          <div className={`absolute bottom-2 right-2 px-3 py-1 font-black text-sm rounded shadow-lg backdrop-blur-sm tracking-wider ${type === 'DX' ? 'bg-blue-600/80 text-white border border-blue-400/50' : 'bg-green-600/80 text-white border border-green-400/50'}`}>
-                              {type}
-                          </div>
-                        </div>
-
-                        {/* Content Column */}
-                        <div className="flex-1 p-5 flex flex-col">
-                            <div className="mb-4 flex flex-col items-start justify-between">
-                              <div className="flex items-center justify-between w-full">
-                                  <a href={`https://arcade-songs.zetaraku.dev/maimai/?title=${encodeURIComponent(song.title)}`} target="_blank" rel="noreferrer" className="text-xl font-bold leading-tight mb-1 hover:text-purple-400 hover:underline transition-colors flex items-center gap-2">
-                                      {song.title} <span className="text-[10px] text-gray-500 whitespace-nowrap hidden sm:inline-block font-normal bg-gray-800 px-1.5 py-0.5 rounded leading-none border border-gray-700">↗ ZETARAKU</span>
-                                  </a>
-                                  
-                                  {reactiveHiddenCount > 0 && !isGloballyHiddenType && (
-                                      <div className="text-xs text-orange-400 bg-orange-900/20 px-2 py-1 rounded border border-orange-900/50 flex items-center gap-1.5 whitespace-nowrap">
-                                          <EyeOff size={12} /> {reactiveHiddenCount} Chart{reactiveHiddenCount > 1 ? 's' : ''} Omitted
-                                      </div>
-                                  )}
-                              </div>
-                              <p className="text-sm text-gray-400 line-clamp-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                                  <span>{song.artist}</span>
-                                  {song.releaseDate && <span className="text-gray-600 text-[10px] whitespace-nowrap">| {song.releaseDate}</span>}
-                                  {song.version && <span className="text-purple-400/80 text-[9px] uppercase font-bold whitespace-nowrap tracking-wider bg-purple-900/30 px-1.5 py-0.5 rounded">[{song.version}]</span>}
-                              </p>
-                            </div>
-                            
-                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {/* Player 1 Valid Difficulties Block */}
-                              <div className="bg-blue-900/10 border border-blue-900/30 rounded-xl p-3 flex flex-col">
-                                  <h4 className="text-xs font-bold text-blue-400 mb-2 border-b border-blue-900/50 pb-1 uppercase tracking-wider flex justify-between items-center">
-                                      <span>Player 1 Options</span>
-                                      <span className="text-[10px] bg-blue-950 px-1.5 py-0.5 rounded">{p1Charts.filter(c => !hiddenCharts.includes(c.id)).length} Hits</span>
-                                  </h4>
-                                  <div className="flex flex-col gap-1">
-                                      {p1Charts.filter(c => !hiddenCharts.includes(c.id)).length > 0 ? (
-                                           p1Charts.filter(c => !hiddenCharts.includes(c.id)).map(c => renderChartRow(c, 1))
-                                      ) : (
-                                          <div className="flex-1 flex flex-col items-center justify-center text-center p-2 opacity-50">
-                                              <EyeOff size={16} className="text-blue-900 mb-1" />
-                                              <p className="text-xs font-medium">None active</p>
-                                          </div>
-                                      )}
-                                  </div>
-                              </div>
-                              
-                              {/* Player 2 Valid Difficulties Block */}
-                              <div className="bg-rose-900/10 border border-rose-900/30 rounded-xl p-3 flex flex-col">
-                                  <h4 className="text-xs font-bold text-rose-400 mb-2 border-b border-rose-900/50 pb-1 uppercase tracking-wider flex justify-between items-center">
-                                      <span>Player 2 Options</span>
-                                      <span className="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded">{p2Charts.filter(c => !hiddenCharts.includes(c.id)).length} Hits</span>
-                                  </h4>
-                                  <div className="flex flex-col gap-1">
-                                      {p2Charts.filter(c => !hiddenCharts.includes(c.id)).length > 0 ? (
-                                           p2Charts.filter(c => !hiddenCharts.includes(c.id)).map(c => renderChartRow(c, 2))
-                                      ) : (
-                                          <div className="flex-1 flex flex-col items-center justify-center text-center p-2 opacity-50">
-                                              <EyeOff size={16} className="text-rose-900 mb-1" />
-                                              <p className="text-xs font-medium">None active</p>
-                                          </div>
-                                      )}
-                                  </div>
-                              </div>
-                            </div>
-                        </div>
-                      </div>
-                  )
-                  })}
+                      });
+                  })()}
 
                   {matchedSongs.length > resultsLimit && (
                     <div className="text-center text-gray-500 p-8 border border-dashed border-gray-800 rounded-2xl">
@@ -727,10 +754,9 @@ export default function PairSelectionApplet() {
                           </h4>
                           <div className="space-y-2">
                              {hiddenCharts.map(chartId => {
-                                 // Parse basic info from chartId (e.g., songId_DX)
                                  const parts = chartId.split('_');
                                  const cType = parts.pop() || '';
-                                 const cSong = parts.join('_'); // Song ID might have underscores
+                                 const cSong = parts.join('_');
                                  const songObj = Object.values(metadata).find(s => s.songId === cSong);
                                  
                                  return (
