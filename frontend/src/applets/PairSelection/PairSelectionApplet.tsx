@@ -481,9 +481,9 @@ export default function PairSelectionApplet() {
 
                {/* Controls Row 3 - Results & Actions */}
                <div className="flex flex-col md:flex-row items-start md:items-center gap-6 w-full pt-4 border-t border-gray-800/50">
-                  <div className="flex items-center gap-6 flex-1">
-                      <span className="text-sm font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap flex items-center justify-between min-w-[120px]">
-                         Max Results <span className="text-gray-200 ml-4">{resultsLimit > 40 ? 'Unbounded' : resultsLimit}</span>
+                  <div className="flex items-center gap-4 flex-1">
+                      <span className="text-sm font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
+                         Max Results
                       </span>
                       <input 
                          type="range" 
@@ -493,8 +493,11 @@ export default function PairSelectionApplet() {
                              const val = Number(e.target.value);
                              setResultsLimit(val > 40 ? 999999 : val);
                          }} 
-                         className="w-full max-w-[200px] accent-purple-500" 
+                         className="flex-1 max-w-[200px] accent-purple-500" 
                       />
+                      <span className="text-sm font-bold text-gray-200 min-w-[80px]">
+                         {resultsLimit > 40 ? 'Unbounded' : resultsLimit}
+                      </span>
                   </div>
 
                   <div className="w-px h-8 bg-gray-800 hidden md:block"></div>
