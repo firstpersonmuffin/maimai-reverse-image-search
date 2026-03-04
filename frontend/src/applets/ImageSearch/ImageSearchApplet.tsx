@@ -396,8 +396,8 @@ export default function ImageSearchApplet() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-6 flex flex-col items-center" onPaste={handlePaste}>
-      <header className="mb-4 text-center w-full max-w-5xl pt-4 relative">
-        <Link to="/" className="absolute left-0 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300 font-medium hidden md:block">
+      <header className="mb-4 text-center w-full max-w-5xl pt-4 relative flex flex-col items-center">
+        <Link to="/" className="text-blue-400 hover:text-blue-300 font-medium mb-2 md:absolute md:left-0 md:top-1/2 md:-translate-y-1/2 md:mb-0 text-sm flex items-center gap-1">
           ← Portal Base
         </Link>
         <h1 className="text-3xl shadow-blue-500 font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500 inline-block">

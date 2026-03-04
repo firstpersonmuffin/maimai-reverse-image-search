@@ -44,73 +44,73 @@
     {
         "label": "15k - 15.1k",
         "min": 13.5,
-        "max": 15.0,
+        "max": 14.1,
         "color": "rainbow"
     },
     {
         "label": "15.1k - 15.2k",
         "min": 13.5,
-        "max": 15.0,
+        "max": 14.2,
         "color": "rainbow"
     },
     {
         "label": "15.2k - 15.3k",
         "min": 13.6,
-        "max": 15.0,
+        "max": 14.2,
         "color": "rainbow"
     },
     {
         "label": "15.3k - 15.4k",
         "min": 13.7,
-        "max": 15.0,
+        "max": 14.2,
         "color": "rainbow"
     },
     {
         "label": "15.4k - 15.5k",
         "min": 13.8,
-        "max": 15.0,
+        "max": 14.3,
         "color": "rainbow"
     },
     {
         "label": "15.5k - 15.6k",
         "min": 13.9,
-        "max": 15.0,
+        "max": 14.4,
         "color": "rainbow"
     },
     {
         "label": "15.6k - 15.7k",
         "min": 14.0,
-        "max": 15.0,
+        "max": 14.4,
         "color": "rainbow"
     },
     {
         "label": "15.7k - 15.8k",
         "min": 14.1,
-        "max": 15.0,
+        "max": 14.5,
         "color": "rainbow"
     },
     {
         "label": "15.8k - 15.9k",
         "min": 14.2,
-        "max": 15.0,
+        "max": 14.6,
         "color": "rainbow"
     },
     {
         "label": "15.9k - 16.0k",
         "min": 14.3,
-        "max": 15.0,
+        "max": 14.8,
         "color": "rainbow"
     },
     {
         "label": "16.0k - 16.1k",
         "min": 14.4,
-        "max": 15.0,
+        "max": 14.8,
         "color": "rainbow"
     },
     {
         "label": "16.1k - 16.2k",
         "min": 14.4,
-        "max": 15.0,
+        "max": 14.9,
         "color": "rainbow"
     }
 ]

@@ -191,7 +191,7 @@ export default function PairSelectionApplet() {
             const p2ValidCharts: ChartWithId[] = [];
             let p1VisibleCount = 0;
             let p2VisibleCount = 0;
-            let typeHiddenCount = 0; // Hidden charts in this card explicitly
+            let typeHiddenCountAtSearchTime = 0; 
 
             const relevantCharts = song.charts.filter(c => {
                 const rawType = (c.type || '').toLowerCase();
@@ -227,20 +227,15 @@ export default function PairSelectionApplet() {
                }
                
                if ((matchedP1 || matchedP2) && isHidden) {
-                   typeHiddenCount++;
+                   typeHiddenCountAtSearchTime++;
                }
             });
 
-            // The overall card (for this specific type) is valid if BOTH players have non-hidden hits in their range,
-            // OR if they matched but everything was hidden (so the user can clearly see that a match exists but they hid it).
-            // Actually, if we just want it to disappear completely if hidden, change to checking p1VisibleCount > 0 etc.
-            // But per request "hidden numbers inaccurate", let's ensure we only show the card if there's at least one visible hit for each,
-            // OR if EVERYTHING was hidden but it WOULD have matched.
-            const p1Satisfied = p1VisibleCount > 0 || (p1VisibleCount === 0 && typeHiddenCount > 0);
-            const p2Satisfied = p2VisibleCount > 0 || (p2VisibleCount === 0 && typeHiddenCount > 0);
+            const p1Satisfied = p1VisibleCount > 0 || (p1VisibleCount === 0 && typeHiddenCountAtSearchTime > 0);
+            const p2Satisfied = p2VisibleCount > 0 || (p2VisibleCount === 0 && typeHiddenCountAtSearchTime > 0);
 
-            if (p1Satisfied && p2Satisfied && (p1VisibleCount > 0 || p2VisibleCount > 0 || typeHiddenCount > 0)) {
-                matches.push({ song, type: targetType, p1Charts: p1ValidCharts, p2Charts: p2ValidCharts, hiddenCount: typeHiddenCount });
+            if (p1Satisfied && p2Satisfied && (p1VisibleCount > 0 || p2VisibleCount > 0 || typeHiddenCountAtSearchTime > 0)) {
+                matches.push({ song, type: targetType, p1Charts: p1ValidCharts, p2Charts: p2ValidCharts, hiddenCount: typeHiddenCountAtSearchTime });
             }
         };
 
@@ -407,8 +402,8 @@ export default function PairSelectionApplet() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6 flex flex-col items-center">
-      <header className="mb-6 flex items-center justify-between w-full max-w-6xl pt-4 relative">
-        <Link to="/" className="text-blue-400 hover:text-blue-300 font-medium whitespace-nowrap hidden sm:block">
+      <header className="mb-6 flex flex-col items-center justify-between w-full max-w-6xl pt-4 relative">
+        <Link to="/" className="text-blue-400 hover:text-blue-300 font-medium whitespace-nowrap mb-2 sm:absolute sm:left-0 sm:top-1/2 sm:-translate-y-1/2 sm:mb-0 text-sm flex items-center gap-1">
           ← Portal Base
         </Link>
         <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500 inline-block text-center flex-1">
@@ -530,10 +525,14 @@ export default function PairSelectionApplet() {
                 </h2>
 
                 <div className="space-y-4">
-                  {matchedSongs.slice(0, resultsLimit).map(({ song, type, p1Charts, p2Charts, hiddenCount: typeHiddenCount }) => {
+                  {matchedSongs.slice(0, resultsLimit).map(({ song, type, p1Charts, p2Charts }) => {
                       const uid = `${song.songId}_${type}`;
                       
                       const isGloballyHiddenType = hiddenCharts.includes(uid);
+                      
+                      // Calculate reactive hidden count based on current hiddenCharts state
+                      const allMatchedChartsInThisCard = Array.from(new Set([...p1Charts, ...p2Charts].map(c => c.id)));
+                      const reactiveHiddenCount = allMatchedChartsInThisCard.filter(id => hiddenCharts.includes(id)).length;
 
                       const renderChartRow = (c: ChartWithId, playerNum: 1 | 2) => {
                           return (
@@ -608,9 +607,9 @@ export default function PairSelectionApplet() {
                                       {song.title} <span className="text-[10px] text-gray-500 whitespace-nowrap hidden sm:inline-block font-normal bg-gray-800 px-1.5 py-0.5 rounded leading-none border border-gray-700">↗ ZETARAKU</span>
                                   </a>
                                   
-                                  {typeHiddenCount > 0 && !isGloballyHiddenType && (
+                                  {reactiveHiddenCount > 0 && !isGloballyHiddenType && (
                                       <div className="text-xs text-orange-400 bg-orange-900/20 px-2 py-1 rounded border border-orange-900/50 flex items-center gap-1.5 whitespace-nowrap">
-                                          <EyeOff size={12} /> {typeHiddenCount} Chart{typeHiddenCount > 1 ? 's' : ''} Omitted
+                                          <EyeOff size={12} /> {reactiveHiddenCount} Chart{reactiveHiddenCount > 1 ? 's' : ''} Omitted
                                       </div>
                                   )}
                               </div>
@@ -660,8 +659,8 @@ export default function PairSelectionApplet() {
                             </div>
                         </div>
                       </div>
-                  )}
-                  )}
+                  )
+                  })}
 
                   {matchedSongs.length > resultsLimit && (
                     <div className="text-center text-gray-500 p-8 border border-dashed border-gray-800 rounded-2xl">
