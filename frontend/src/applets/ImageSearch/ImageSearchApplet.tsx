@@ -4,9 +4,8 @@ import Cropper, { ReactCropperElement } from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
 import { 
   ImageIcon, Copy, RefreshCw, 
-  ZoomIn, ZoomOut, Move, Crop as CropIcon, Camera, CornerUpRight
+  ZoomIn, ZoomOut, Move, Crop as CropIcon, Camera
 } from 'lucide-react';
-import PerspectiveCropper from './PerspectiveCropper';
 
 // Define TS Interfaces
 interface MatchResult {
@@ -48,8 +47,6 @@ export default function ImageSearchApplet() {
   const [queryImageUrl, setQueryImageUrl] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<string>('');
-  const [isPerspectiveMode, setIsPerspectiveMode] = useState(false);
-  const [warpPoints, setWarpPoints] = useState<{x: number, y: number}[]>([]);
   
   const cropperRef = useRef<ReactCropperElement>(null);
 
@@ -161,19 +158,14 @@ export default function ImageSearchApplet() {
     if (queryImageFile && queryImageUrl) performSearch(queryImageFile, queryImageUrl);
   };
 
-  const handleSearchPerspective = async () => {
-    if (!queryImageUrl) return;
-    performSearch(null, queryImageUrl, true);
-  };
-
-  const performSearch = async (image: Blob | File | null, objUrl: string, usePerspective: boolean = false) => {
+  const performSearch = async (image: Blob | File | null, objUrl: string) => {
     setLoading(true);
     setResults([]);
     searchCancelledRef.current = false;
-    await searchLocal(image, objUrl, usePerspective);
+    await searchLocal(image, objUrl);
   };
 
-  const searchLocal = async (_file: Blob | File | null, objUrl: string, usePerspective: boolean = false) => {
+  const searchLocal = async (_file: Blob | File | null, objUrl: string) => {
     // @ts-ignore
     if (!window.cv || !localDbRef.current) {
       alert("Local environment not fully loaded.");
@@ -184,8 +176,7 @@ export default function ImageSearchApplet() {
     const cv = window.cv;
 
     // Check Cache
-    if (!usePerspective && 
-        objUrl === featureCacheRef.current.objUrl && 
+    if (objUrl === featureCacheRef.current.objUrl && 
         maxSize === featureCacheRef.current.maxSize && 
         maxFeatures === featureCacheRef.current.maxFeatures && 
         featureCacheRef.current.queryDesc) {
@@ -204,33 +195,7 @@ export default function ImageSearchApplet() {
           const src = new cv.Mat();
           let currentMetrics = "";
 
-          if (usePerspective && warpPoints.length === 4) {
-             // Perform Warp
-             const srcCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                warpPoints[0].x, warpPoints[0].y,
-                warpPoints[1].x, warpPoints[1].y,
-                warpPoints[2].x, warpPoints[2].y,
-                warpPoints[3].x, warpPoints[3].y
-             ]);
-             
-             // Define normalized 600x600 chart output
-             const side = 600;
-             const dstCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                0, 0,
-                side, 0,
-                side, side,
-                0, side
-             ]);
-             
-             const M = cv.getPerspectiveTransform(srcCoords, dstCoords);
-             const dsize = new cv.Size(side, side);
-             cv.warpPerspective(srcRaw, src, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-             
-             currentMetrics = `Perspective Warp Applied: ${side}x${side}\nPoints: ${warpPoints.map(p => `(${Math.round(p.x)}, ${Math.round(p.y)})`).join(' ')}`;
-             
-             // Cleanup mat
-             srcCoords.delete(); dstCoords.delete(); M.delete();
-          } else if (srcRaw.cols > maxSize || srcRaw.rows > maxSize) {
+          if (srcRaw.cols > maxSize || srcRaw.rows > maxSize) {
             let scale = maxSize / Math.max(srcRaw.cols, srcRaw.rows);
             let dsize = new cv.Size(Math.round(srcRaw.cols * scale), Math.round(srcRaw.rows * scale));
             cv.resize(srcRaw, src, dsize, 0, 0, cv.INTER_AREA);
@@ -497,7 +462,7 @@ export default function ImageSearchApplet() {
                     className={`px-3 py-1.5 text-xs font-bold rounded shadow-inner border transition-colors ${
                       chartTypeFilter.includes('DX')
                         ? 'bg-blue-600 border-blue-400 text-white' 
-                        : 'bg-gray-700 border-gray-600 text-gray-400 hover:bg-gray-600'
+                        : 'bg-gray-700 border-gray-600 text-gray-400 hover:bg-gray-700'
                     }`}
                   >
                     DX
@@ -564,69 +529,38 @@ export default function ImageSearchApplet() {
                 <p className="text-gray-400 mb-4 text-sm">Use the controls below to zoom, pan, or draw a new crop box.</p>
                 
                 <div className="w-full flex-grow max-h-[500px] min-h-[300px] bg-black rounded-lg overflow-hidden mb-4 border border-gray-700 relative">
-                  {isPerspectiveMode ? (
-                    <PerspectiveCropper 
-                      image={queryImageUrl} 
-                      onPointsChange={setWarpPoints}
-                    />
-                  ) : (
-                    <Cropper
-                      ref={cropperRef}
-                      src={queryImageUrl}
-                      style={{ height: "100%", width: "100%" }}
-                      viewMode={1}
-                      dragMode="crop"
-                      autoCropArea={0.8}
-                      guides={true}
-                      background={true}
-                      toggleDragModeOnDblclick={true}
-                      zoomOnWheel={false}
-                    />
-                  )}
+                  <Cropper
+                    ref={cropperRef}
+                    src={queryImageUrl}
+                    style={{ height: "100%", width: "100%" }}
+                    viewMode={1}
+                    dragMode="crop"
+                    autoCropArea={0.8}
+                    guides={true}
+                    background={true}
+                    toggleDragModeOnDblclick={true}
+                    zoomOnWheel={false}
+                  />
                 </div>
 
                 <div className="flex gap-2 justify-center mb-6 flex-wrap">
-                  {!isPerspectiveMode ? (
-                    <>
-                      <button onClick={() => cropperRef.current?.cropper.zoom(0.1)} title="Zoom In" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomIn size={20}/></button>
-                      <button onClick={() => cropperRef.current?.cropper.zoom(-0.1)} title="Zoom Out" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomOut size={20}/></button>
-                      <button onClick={() => cropperRef.current?.cropper.setDragMode('move')} title="Pan Image" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><Move size={20}/></button>
-                      <button onClick={() => cropperRef.current?.cropper.setDragMode('crop')} title="Draw Crop Box" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><CropIcon size={20}/></button>
-                      <button 
-                        onClick={() => setIsPerspectiveMode(true)} 
-                        title="Switch to Perspective Fix" 
-                        className="p-3 bg-purple-900/40 text-purple-400 border border-purple-800/50 hover:bg-purple-900/60 rounded-lg transition-all flex items-center gap-2 font-bold px-4"
-                      >
-                        <CornerUpRight size={20}/> Perspective Fix
-                      </button>
-                    </>
-                  ) : (
-                    <button 
-                      onClick={() => setIsPerspectiveMode(false)} 
-                      className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition-colors"
-                    >
-                      Back to Standard Crop
-                    </button>
-                  )}
+                  <button onClick={() => cropperRef.current?.cropper.zoom(0.1)} title="Zoom In" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomIn size={20}/></button>
+                  <button onClick={() => cropperRef.current?.cropper.zoom(-0.1)} title="Zoom Out" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><ZoomOut size={20}/></button>
+                  <button onClick={() => cropperRef.current?.cropper.setDragMode('move')} title="Pan Image" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><Move size={20}/></button>
+                  <button onClick={() => cropperRef.current?.cropper.setDragMode('crop')} title="Draw Crop Box" className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"><CropIcon size={20}/></button>
                 </div>
 
                 {metrics && <pre className="text-xs text-gray-400 mb-6 bg-gray-900 p-4 rounded-lg overflow-x-auto whitespace-pre-wrap">{metrics}</pre>}
 
                 <div className="flex gap-4 justify-center flex-wrap">
-                  {isPerspectiveMode ? (
-                     <button onClick={handleSearchPerspective} disabled={loading} className="px-8 py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl shadow-lg transition-all flex items-center gap-2">
-                        <CornerUpRight size={20} /> Fix & Search Perspective
-                     </button>
-                  ) : (
-                    <>
-                      <button onClick={handleSearchCropped} disabled={loading} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl disabled:opacity-50 transition-colors">
-                        Search Cropped Area
-                      </button>
-                      <button onClick={handleSearchFull} disabled={loading} className="px-6 py-3 border border-gray-600 hover:bg-gray-700 font-bold rounded-xl disabled:opacity-50 transition-colors">
-                        Search Full Image
-                      </button>
-                    </>
-                  )}
+                  <div className="flex gap-4 justify-center flex-wrap">
+                    <button onClick={handleSearchCropped} disabled={loading} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl disabled:opacity-50 transition-colors">
+                      Search Cropped Area
+                    </button>
+                    <button onClick={handleSearchFull} disabled={loading} className="px-6 py-3 border border-gray-600 hover:bg-gray-700 font-bold rounded-xl disabled:opacity-50 transition-colors">
+                      Search Full Image
+                    </button>
+                  </div>
                   <button 
                     onClick={() => { setQueryImageUrl(null); setQueryImageFile(null); setResults([]); }} 
                     disabled={loading} 
@@ -677,7 +611,6 @@ export default function ImageSearchApplet() {
                     }
                   };
 
-                  // Filter charts to display only the ones matching the selected difficulty
                   const displayCharts = match.charts?.filter((c: any) => {
                      const diffMatch = difficultyFilter.includes('All') || difficultyFilter.some((d: string) => d.toLowerCase().replace(':', '') === (c.difficulty || '').toLowerCase().replace(':', ''));
                      const levelMatch = parseFloat(c.internalLevel || c.level || 0) >= minLevel && parseFloat(c.internalLevel || c.level || 0) <= maxLevel;
@@ -732,7 +665,7 @@ export default function ImageSearchApplet() {
                                  <span className="bg-gray-800 text-gray-200 px-1.5 py-0.5 font-bold">
                                    {c.level} <span className="text-gray-400 font-normal">({parseFloat(c.internalLevel || 0).toFixed(1)})</span>
                                  </span>
-                               </div>
+                                </div>
                              ))}
                           </div>
                         </div>

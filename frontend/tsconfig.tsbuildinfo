@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/applets/imagesearch/imagesearchapplet.tsx","./src/applets/imagesearch/perspectivecropper.tsx","./src/applets/pairselection/pairselectionapplet.tsx"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/applets/imagesearch/imagesearchapplet.tsx","./src/applets/pairselection/pairselectionapplet.tsx"],"version":"5.9.3"}
