@@ -38,17 +38,18 @@ A collection of web-based utilities for maimai players, including a Reverse Imag
    python src/processing/compute_sift.py
    ```
 
-3. **Start the server**
+3. **Start the frontend development server**
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   *(Optional)* If you also want to run the FastAPI backend for the reverse image search API:
    ```bash
    python -m uvicorn src.applet.backend.main:app --host 0.0.0.0 --port 8000
    ```
-   Or if using npm scripts (optional setup):
-   ```bash
-   npm run start
-   ```
 
 4. **Open the web interface**
-   Navigate your browser to [http://localhost:8000](http://localhost:8000).
+   Navigate your browser to [http://localhost:5173/maimai-reverse-image-search/pairs](http://localhost:5173/maimai-reverse-image-search/pairs) for the Pair Selection applet.
 
 ## Usage
 
