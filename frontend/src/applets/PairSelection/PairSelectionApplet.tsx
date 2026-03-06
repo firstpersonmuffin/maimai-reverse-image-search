@@ -554,15 +554,38 @@ export default function PairSelectionApplet() {
                     className="milestone-slider my-2"
                 />
                 
-                <div className="flex justify-between px-1 text-[7px] sm:text-[8px] text-gray-600 font-bold uppercase tracking-tighter">
-                    <span className={pState.activeBracket === 'ALL' ? 'text-white' : ''}>ALL</span>
-                    <span className={pState.rating === 10000 ? 'text-white' : ''}>10k</span>
-                    <span className={pState.rating === 11000 ? 'text-white' : ''}>11k</span>
-                    <span className={pState.rating === 12000 ? 'text-white' : ''}>12k</span>
-                    <span className={pState.rating === 13000 ? 'text-white' : ''}>13k</span>
-                    <span className={pState.rating === 14000 ? 'text-white' : ''}>14k</span>
-                    <span className={pState.rating === 15000 && pState.activeBracket !== 'ALL' ? 'text-white' : ''}>15k</span>
-                    <span className={pState.rating === 16000 ? 'text-white' : ''}>16k</span>
+                <div className="relative h-4 mt-1">
+                    {[
+                        { text: 'ALL', idx: -1, rating: null },
+                        { text: '10k', idx: 0, rating: 10000 },
+                        { text: '11k', idx: 2, rating: 11000 },
+                        { text: '12k', idx: 3, rating: 12000 },
+                        { text: '13k', idx: 4, rating: 13000 },
+                        { text: '14k', idx: 5, rating: 14000 },
+                        { text: '15k', idx: 7, rating: 15000 },
+                        { text: '16k', idx: 17, rating: 16000 },
+                    ].map((label, i) => {
+                        const vmax = availableBrackets.length - 1;
+                        const vmin = -1;
+                        const pct = ((label.idx - vmin) / (vmax - vmin)) * 100;
+                        const isActive = label.text === 'ALL' 
+                            ? pState.activeBracket === 'ALL'
+                            : pState.rating === label.rating && pState.activeBracket !== 'ALL';
+                        
+                        let transform = 'translateX(-50%)';
+                        if (pct < 5) transform = 'translateX(0)';
+                        if (pct > 95) transform = 'translateX(-100%)';
+                        
+                        return (
+                            <span 
+                                key={i}
+                                className={`absolute text-[7px] sm:text-[8px] font-bold uppercase tracking-tighter transition-colors ${isActive ? 'text-white' : 'text-gray-600'}`}
+                                style={{ left: `${pct}%`, transform }}
+                            >
+                                {label.text}
+                            </span>
+                        );
+                    })}
                 </div>
             </div>
         </div>
