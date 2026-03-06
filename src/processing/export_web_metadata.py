@@ -26,6 +26,7 @@ def main():
                 'version': str(row['version']),
                 'releaseDate': str(row.get('releaseDate', '')),
                 'intl': str(row.get('intl', '')),
+                'unavailable_usa': bool(row.get('unavailable_usa', False)),
                 'charts': []
             }
             

@@ -48,6 +48,7 @@ def main():
                     'version': song.get('version', ''),
                     'releaseDate': song.get('releaseDate', ''),
                     'intl': str(sheet.get('regions', {}).get('intl', False)),
+                    'unavailable_usa': not sheet.get('regions', {}).get('usa', True),
                     'difficulty': sheet.get('difficulty'),
                     'type': sheet.get('type'),
                     'level': sheet.get('level'),

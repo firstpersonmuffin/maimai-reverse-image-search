@@ -17,6 +17,7 @@ interface SongData {
   version?: string;
   releaseDate?: string;
   intl?: string | boolean;
+  unavailable_usa?: boolean;
   charts: Chart[];
 }
 

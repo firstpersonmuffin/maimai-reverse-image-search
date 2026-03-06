@@ -32,7 +32,7 @@ def main():
     shutil.copytree(dist_dir, out_dir)
     
     # 4. Success
-    print("\n✅ Build complete! The 'docs' folder is ready to be deployed.")
+    print("\nBuild complete! The 'docs' folder is ready to be deployed.")
     print("To test locally without the backend, run: python -m http.server 8080 --directory docs")
 
 if __name__ == "__main__":
