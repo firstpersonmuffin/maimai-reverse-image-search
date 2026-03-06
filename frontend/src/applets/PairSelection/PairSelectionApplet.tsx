@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { EyeOff, Eye, Search, Info } from 'lucide-react';
+import { EyeOff, Eye, Search, Info, ChevronDown, ChevronUp, Globe, Settings2, SlidersHorizontal, Plus, Minus } from 'lucide-react';
 
 interface Chart {
   type: string;
@@ -31,6 +31,8 @@ interface PlayerSettings {
   activeBracket: string | null;
   minLevel: number;
   maxLevel: number;
+  diffs: string[];
+  rating: number;
 }
 
 const DEFAULT_BRACKETS: BracketDef[] = [
@@ -59,6 +61,49 @@ interface ChartWithId extends Chart {
   id: string;
 }
 
+const GLOBAL_CSS = `
+  /* Hide native spin buttons */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+
+  /* Milestone Slider Styling */
+  .milestone-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #1e1b4b; /* bg-indigo-950 */
+    border-radius: 5px;
+    outline: none;
+    transition: opacity .2s;
+  }
+  .milestone-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #a855f7; /* purple-500 */
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  }
+  .milestone-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #a855f7;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  }
+`;
+
 interface MatchedSongResult {
   song: SongData;
   type: 'DX' | 'STD';
@@ -78,9 +123,25 @@ export default function PairSelectionApplet() {
   const [versionFilter, setVersionFilter] = useState<string[]>([]);
   const [availableVersions, setAvailableVersions] = useState<{label: string, value: string}[]>([]);
   const [resultsLimit, setResultsLimit] = useState(10);
-  
-  const [p1, setP1] = useState<PlayerSettings>({ activeBracket: null, minLevel: 13.0, maxLevel: 14.5 });
-  const [p2, setP2] = useState<PlayerSettings>({ activeBracket: null, minLevel: 12.0, maxLevel: 13.5 });
+
+  // New Phase 12 Filters
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [regionalFilter, setRegionalFilter] = useState<'US' | 'ALL'>('US');
+
+  const [p1, setP1] = useState<PlayerSettings>({ 
+    activeBracket: null, 
+    minLevel: 13.0, 
+    maxLevel: 14.5, 
+    diffs: ['Expert', 'Master', 'Remaster'],
+    rating: 14000
+  });
+  const [p2, setP2] = useState<PlayerSettings>({ 
+    activeBracket: null, 
+    minLevel: 12.0, 
+    maxLevel: 13.5, 
+    diffs: ['Expert', 'Master', 'Remaster'],
+    rating: 13000
+  });
 
   // Results State
   const [matchedSongs, setMatchedSongs] = useState<MatchedSongResult[]>([]);
@@ -125,9 +186,10 @@ export default function PairSelectionApplet() {
         try {
             const vRes = await fetch(`${import.meta.env.BASE_URL}versions.json`);
             if (vRes.ok) {
-                const vData = await vRes.json();
-                setAvailableVersions(vData);
-                vDataForAutoSelect = vData;
+                const vData: {label: string, value: string}[] = await vRes.json();
+                const filteredV = vData.filter(v => v.value !== 'All' && v.label !== 'All');
+                setAvailableVersions(filteredV);
+                vDataForAutoSelect = filteredV;
             }
         } catch (err) {
             console.warn("Could not fetch versions.json");
@@ -186,15 +248,17 @@ export default function PairSelectionApplet() {
 
       for (const song of Object.values(metadata)) {
         if (!song.charts) continue;
-        
-        // Exclude Japan-only songs
-        if (String(song.intl) !== "1" && song.intl !== true && String(song.intl).toLowerCase() !== "true" && song.intl !== "Yes" && String(song.intl).toLowerCase() !== "true") {
-            continue; 
-        }
-        
-        // Exclude version non-matches
+        // Apply version filter
         if (versionFilter.length > 0 && !versionFilter.includes(song.version || '')) {
             continue;
+        }
+
+        // Apply regional filter
+        if (regionalFilter === 'US') {
+            const isIntl = String(song.intl) === "1" || song.intl === true || String(song.intl).toLowerCase() === "true" || song.intl === "Yes";
+            if (!isIntl) {
+                continue; 
+            }
         }
 
         const processType = (targetType: 'DX' | 'STD') => {
@@ -224,14 +288,16 @@ export default function PairSelectionApplet() {
                let matchedP2 = false;
 
                // Check P1
-               if (internalLvl >= p1.minLevel && internalLvl <= p1.maxLevel) {
+               const p1DiffMatch = p1.diffs.length === 0 || p1.diffs.some(d => (c.difficulty || '').toLowerCase().includes(d.toLowerCase()));
+               if (internalLvl >= p1.minLevel && internalLvl <= p1.maxLevel && p1DiffMatch) {
                  matchedP1 = true;
                  p1ValidCharts.push(cWithId); 
                  if (!isHidden) p1VisibleCount++;
                }
 
                // Check P2
-               if (internalLvl >= p2.minLevel && internalLvl <= p2.maxLevel) {
+               const p2DiffMatch = p2.diffs.length === 0 || p2.diffs.some(d => (c.difficulty || '').toLowerCase().includes(d.toLowerCase()));
+               if (internalLvl >= p2.minLevel && internalLvl <= p2.maxLevel && p2DiffMatch) {
                  matchedP2 = true;
                  p2ValidCharts.push(cWithId); 
                  if (!isHidden) p2VisibleCount++;
@@ -262,7 +328,7 @@ export default function PairSelectionApplet() {
          
          return (b.p1Charts.length + b.p2Charts.length) - (a.p1Charts.length + a.p2Charts.length);
       });
-      
+
       setMatchedSongs(matches);
       setSearching(false);
     });
@@ -349,71 +415,218 @@ export default function PairSelectionApplet() {
         if (prev.activeBracket === b.label) {
             return { ...prev, activeBracket: null };
         } else {
-            return { activeBracket: b.label, minLevel: b.min, maxLevel: b.max };
+            // Update rating to match bracket start if possible
+            let newRating = prev.rating;
+            const parts = b.label.replace('<', '').split('-').map(p => parseFloat(p.trim().replace('k', '')));
+            if (!isNaN(parts[0])) {
+                newRating = Math.round(parts[0] * 1000);
+            } else if (b.label === "0") {
+                newRating = 0;
+            }
+            return { ...prev, activeBracket: b.label, minLevel: b.min, maxLevel: b.max, rating: newRating };
         }
     });
   };
 
-  const enableCustom = (playerNum: 1 | 2) => {
+
+
+  const toggleDiff = (playerNum: 1 | 2, d: string) => {
       const setState = playerNum === 1 ? setP1 : setP2;
-      setState(prev => ({ ...prev, activeBracket: null }));
+      setState(prev => {
+          const newDiffs = prev.diffs.includes(d) 
+            ? prev.diffs.filter(x => x !== d) 
+            : [...prev.diffs, d];
+          return { ...prev, diffs: newDiffs };
+      });
+  };
+
+  const handleRatingInput = (playerNum: 1 | 2, ratingStr: string) => {
+      const val = parseInt(ratingStr) || 0;
+      const setState = playerNum === 1 ? setP1 : setP2;
+      
+      const ratingInK = val / 1000;
+      let bestB = availableBrackets[0];
+      
+      // Find the last bracket whose lower bound milestone is <= current rating
+      availableBrackets.forEach(b => {
+          const parts = b.label.replace('<', '').split('-').map(p => parseFloat(p.trim().replace('k', '')));
+          const lower = parts[0];
+          if (!isNaN(lower) && ratingInK >= lower) {
+              bestB = b;
+          }
+      });
+
+      setState(prev => ({ ...prev, rating: val, minLevel: bestB.min, maxLevel: bestB.max, activeBracket: bestB.label }));
+  };
+
+  const handleRatingStep = (playerNum: 1 | 2, direction: 'up' | 'down') => {
+      const setState = playerNum === 1 ? setP1 : setP2;
+      const pState = playerNum === 1 ? p1 : p2;
+      
+      // Heuristic to find current or nearest bracket index
+      const ratingInK = pState.rating / 1000;
+      let currentIdx = -1;
+      
+      // Find the best match bracket
+      availableBrackets.forEach((b, i) => {
+          const parts = b.label.replace('<', '').split('-').map(p => parseFloat(p.trim().replace('k', '')));
+          const lower = parts[0];
+          if (!isNaN(lower) && Math.abs(ratingInK - lower) < 0.05) {
+              currentIdx = i;
+          }
+      });
+
+      let nextIdx;
+      if (direction === 'up') {
+          nextIdx = currentIdx + 1;
+          if (nextIdx >= availableBrackets.length) return;
+      } else {
+          // If we are at -1 (custom) or first bracket, or exactly at a bracket
+          nextIdx = currentIdx - 1;
+          if (nextIdx < -1) return;
+      }
+
+      if (nextIdx === -1) {
+          setState(prev => ({...prev, activeBracket: 'ALL', minLevel: 9.0, maxLevel: 15.0, rating: 15000}));
+      } else {
+          toggleBracket(playerNum, availableBrackets[nextIdx]);
+      }
   };
 
   const renderPlayerSettings = (num: 1 | 2, pState: PlayerSettings, setPState: React.Dispatch<React.SetStateAction<PlayerSettings>>) => (
-    <div className={`p-5 rounded-2xl border ${num === 1 ? 'bg-blue-900/10 border-blue-800/50' : 'bg-rose-900/10 border-rose-800/50'}`}>
-        <h3 className={`text-xl font-bold mb-4 flex items-center justify-between gap-2 ${num === 1 ? 'text-blue-400' : 'text-rose-400'}`}>
-            <span>Player {num} Setup</span>
-            {pState.activeBracket && (
-                <button onClick={() => enableCustom(num)} className="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded hover:text-white border border-gray-700 hover:bg-gray-700">Clear</button>
-            )}
-        </h3>
-        
-        <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-                <label className="text-sm text-gray-400">Select Rating Bracket</label>
-                <button onClick={() => setShowInfoModal(true)} className="text-gray-500 hover:text-white transition-colors">
-                    <Info size={16} />
+    <div className={`p-4 rounded-2xl border ${num === 1 ? 'bg-blue-900/10 border-blue-800/50' : 'bg-rose-900/10 border-rose-800/50'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+             <h3 className={`text-lg font-bold flex items-center gap-2 ${num === 1 ? 'text-blue-400' : 'text-rose-400'}`}>
+                <span className={`w-8 h-8 flex items-center justify-center rounded-lg ${num === 1 ? 'bg-blue-500/20' : 'bg-rose-500/20'}`}>{num}</span>
+                <span>Player Setup</span>
+             </h3>
+             <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-gray-800 shadow-inner group-hover:border-purple-500/30 transition-colors">
+                <button 
+                    onClick={() => handleRatingStep(num, 'down')}
+                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    title="Decrease by 100"
+                >
+                    <Minus size={14} />
                 </button>
-            </div>
-            <div className="grid grid-cols-5 gap-1.5">
-                {availableBrackets.map((b) => (
-                    <button
-                        key={b.label}
-                        onClick={() => toggleBracket(num, b)}
-                        className={getBracketCSS(b.color, pState.activeBracket === b.label)}
-                        title={`Matches levels from ${b.min} to ${b.max}`}
-                    >
-                        {b.label}
-                    </button>
-                ))}
-            </div>
-            {!pState.activeBracket && <p className="text-xs text-gray-500 mt-2 italic">Custom Level Mode active. Use sliders natively below.</p>}
+                <input 
+                    type="number" 
+                    min="0"
+                    max="17000"
+                    step="100"
+                    placeholder="14500"
+                    value={pState.rating || ''}
+                    onChange={(e) => handleRatingInput(num, e.target.value)}
+                    className={`w-16 bg-transparent border-none text-white text-base font-black p-0 focus:ring-0 text-center placeholder:text-gray-700 tabular-nums transition-opacity ${pState.activeBracket === 'ALL' ? 'opacity-30' : 'opacity-100'}`}
+                />
+                <button 
+                    onClick={() => handleRatingStep(num, 'up')}
+                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    title="Increase by 100"
+                >
+                    <Plus size={14} />
+                </button>
+             </div>
         </div>
 
-        <div className="mb-2 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-            <label className="flex justify-between text-sm mb-1 text-gray-300">
-                <span>Internal Level {pState.activeBracket && "(Locked to Bracket)"}</span>
-                <span className="font-bold">{pState.minLevel.toFixed(1)} - {pState.maxLevel.toFixed(1)}</span>
+        <div className="mb-4">
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">Rating Milestone</span>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${pState.activeBracket === 'ALL' ? 'bg-white text-black' : 'bg-purple-900/40 text-purple-300'}`}>
+                        {pState.activeBracket || "Custom"}
+                    </span>
+                </div>
+                
+                <input 
+                    type="range"
+                    min="-1"
+                    max={availableBrackets.length - 1}
+                    step="1"
+                    value={pState.activeBracket === 'ALL' ? -1 : availableBrackets.findIndex(b => b.label === pState.activeBracket)}
+                    onChange={(e) => {
+                        const idx = parseInt(e.target.value);
+                        if (idx === -1) {
+                            setPState(prev => ({...prev, activeBracket: 'ALL', minLevel: 9.0, maxLevel: 15.0, rating: 15000}));
+                        } else {
+                            toggleBracket(num, availableBrackets[idx]);
+                        }
+                    }}
+                    className="milestone-slider my-2"
+                />
+                
+                <div className="flex justify-between px-1 text-[7px] sm:text-[8px] text-gray-600 font-bold uppercase tracking-tighter">
+                    <span className={pState.activeBracket === 'ALL' ? 'text-white' : ''}>ALL</span>
+                    <span className={pState.rating === 10000 ? 'text-white' : ''}>10k</span>
+                    <span className={pState.rating === 11000 ? 'text-white' : ''}>11k</span>
+                    <span className={pState.rating === 12000 ? 'text-white' : ''}>12k</span>
+                    <span className={pState.rating === 13000 ? 'text-white' : ''}>13k</span>
+                    <span className={pState.rating === 14000 ? 'text-white' : ''}>14k</span>
+                    <span className={pState.rating === 15000 && pState.activeBracket !== 'ALL' ? 'text-white' : ''}>15k</span>
+                    <span className={pState.rating === 16000 ? 'text-white' : ''}>16k</span>
+                </div>
+            </div>
+        </div>
+
+        <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Difficulty Filter</span>
+                <div className="flex flex-wrap justify-end gap-1 max-w-[150px] sm:max-w-none">
+                    {['Basic', 'Advanced', 'Expert', 'Master', 'Remaster'].map(d => (
+                        <button 
+                            key={d}
+                            onClick={() => toggleDiff(num, d)}
+                            className={`px-2 py-0.5 text-[8px] font-black rounded uppercase border transition-all ${pState.diffs.includes(d) ? 'bg-gray-200 text-black border-white' : 'bg-gray-900 text-gray-600 border-gray-800 hover:text-gray-400'}`}
+                        >
+                            {d === 'Remaster' ? 'Re:M' : d.substring(0,3)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+
+        <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-800 transition-colors group-hover:border-gray-700">
+            <label className="flex justify-between text-[10px] mb-2 text-gray-500 font-black uppercase tracking-wider">
+                <span>Internal Level {pState.activeBracket && pState.activeBracket !== 'ALL' && "(Auto)"}</span>
+                <span className="text-gray-200 font-bold">{pState.minLevel.toFixed(1)} - {pState.maxLevel.toFixed(1)}</span>
             </label>
-            <div className={`relative h-6 mt-3`}>
+            <div className={`relative h-6`}>
+                <style>{`
+                    input[type=range].p-slider-${num}::-webkit-slider-thumb {
+                        pointer-events: auto;
+                        appearance: none;
+                        width: 1rem;
+                        height: 1rem;
+                        border-radius: 9999px;
+                        background-color: ${num === 1 ? '#3b82f6' : '#f43f5e'};
+                    }
+                    input[type=range].p-slider-${num}::-moz-range-thumb {
+                        pointer-events: auto;
+                        width: 1rem;
+                        height: 1rem;
+                        border-radius: 9999px;
+                        border: none;
+                        background-color: ${num === 1 ? '#3b82f6' : '#f43f5e'};
+                    }
+                `}</style>
                 <input type="range" min="9" max="15" step="0.1" value={pState.minLevel} onChange={(e) => {
                     const val = Math.min(Number(e.target.value), pState.maxLevel);
-                    setPState(s => ({...s, minLevel: val, activeBracket: null}));
-                }} className={`absolute w-full pointer-events-none appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 ${num === 1 ? '[&::-webkit-slider-thumb]:bg-blue-500' : '[&::-webkit-slider-thumb]:bg-rose-500'} [&::-webkit-slider-thumb]:rounded-full z-20`} />
+                    setPState(s => ({...s, minLevel: val, activeBracket: 'ALL', rating: 15000}));
+                }} className={`p-slider-${num} absolute w-full appearance-none bg-transparent z-20 cursor-pointer pointer-events-none`} />
                 <input type="range" min="9" max="15" step="0.1" value={pState.maxLevel} onChange={(e) => {
                     const val = Math.max(Number(e.target.value), pState.minLevel);
-                    setPState(s => ({...s, maxLevel: val, activeBracket: null}));
-                }} className={`absolute w-full pointer-events-none appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 ${num === 1 ? '[&::-webkit-slider-thumb]:bg-blue-500' : '[&::-webkit-slider-thumb]:bg-rose-500'} [&::-webkit-slider-thumb]:rounded-full z-30`} />
+                    setPState(s => ({...s, maxLevel: val, activeBracket: 'ALL', rating: 15000}));
+                }} className={`p-slider-${num} absolute w-full appearance-none bg-transparent z-30 cursor-pointer pointer-events-none`} />
                 
-                <div className="absolute w-full h-1.5 bg-gray-700/50 rounded-full top-1 z-0"></div>
-                <div className={`absolute h-1.5 rounded-full top-1 z-10 ${num === 1 ? 'bg-blue-500' : 'bg-rose-500'}`} style={{ left: `${((pState.minLevel - 9) / 6) * 100}%`, right: `${100 - ((pState.maxLevel - 9) / 6) * 100}%` }}></div>
+                <div className="absolute w-full h-1 bg-gray-800 rounded-full top-2 z-0"></div>
+                <div className={`absolute h-1 rounded-full top-2 z-10 ${num === 1 ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'}`} style={{ left: `${((pState.minLevel - 9) / 6) * 100}%`, right: `${100 - ((pState.maxLevel - 9) / 6) * 100}%` }}></div>
             </div>
         </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6 flex flex-col items-center">
+    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 sm:p-6 flex flex-col items-center">
+      <style>{GLOBAL_CSS}</style>
       <header className="mb-6 flex flex-col items-center justify-between w-full max-w-6xl pt-4 relative">
         <Link to="/" className="text-blue-400 hover:text-blue-300 font-medium whitespace-nowrap mb-2 sm:absolute sm:left-0 sm:top-1/2 sm:-translate-y-1/2 sm:mb-0 text-sm flex items-center gap-1">
           ← Portal Base
@@ -432,116 +645,169 @@ export default function PairSelectionApplet() {
       ) : (
         <main className="w-full max-w-6xl flex flex-col gap-6">
           {/* HEADER SETTINGS */}
-          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-xl">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-5 shadow-2xl">
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 {renderPlayerSettings(1, p1, setP1)}
                 {renderPlayerSettings(2, p2, setP2)}
              </div>
 
-             <div className="flex flex-col gap-4 mt-6">
-               {/* Controls Row 1 - Content Selection */}
-               <div className="flex flex-col md:flex-row items-start md:items-center gap-6 w-full pt-6 border-t border-gray-800">
-                  <div className="flex items-center gap-4">
-                      <span className="text-sm font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Chart Type</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => toggleChartType('DX')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors ${chartTypeFilter.includes('DX') ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'bg-gray-800 text-gray-500 border border-gray-700'}`}>DX</button>
-                        <button onClick={() => toggleChartType('STD')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors ${chartTypeFilter.includes('STD') ? 'bg-green-600 text-white shadow-md shadow-green-600/20' : 'bg-gray-800 text-gray-500 border border-gray-700'}`}>STD</button>
-                      </div>
-                  </div>
+             <div className="flex flex-col gap-2">
+               {/* Advanced Collapsible Header */}
+               <div className="border-t border-gray-800/50 mt-2">
+                 <button 
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="flex items-center gap-2 py-3 px-1 text-gray-500 hover:text-gray-300 transition-colors w-full group"
+                 >
+                    {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    <span className="text-xs font-black uppercase tracking-[0.2em]">{showAdvanced ? 'Hide' : 'Show'} Advanced Filters</span>
+                    <div className="h-px flex-1 bg-gradient-to-r from-gray-800/80 to-transparent ml-2 opacity-30 group-hover:opacity-60"></div>
+                 </button>
                </div>
-               
-               {/* Controls Row 2 - Version Grid */}
-               <div className="flex flex-col gap-3 pt-6 border-t border-gray-800">
-                    <span className="text-sm font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Versions</span>
-                    <div className="flex flex-wrap gap-2">
-                        <button 
-                            onClick={selectAllVersions}
-                            className={`px-3 py-1.5 text-xs font-black rounded-lg transition-colors border bg-gray-700 border-gray-600 text-white hover:bg-gray-600`}
-                        >
-                            Select All
-                        </button>
-                        <button 
-                            onClick={selectNoVersions}
-                            className={`px-3 py-1.5 text-xs font-black rounded-lg transition-colors border bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700`}
-                        >
-                            None
-                        </button>
-                        <div className="w-px h-6 bg-gray-800 mx-1"></div>
-                        {availableVersions.map(v => (
-                            <button 
-                                key={v.value} 
-                                onClick={() => toggleVersion(v.value)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${versionFilter.includes(v.value) ? 'bg-purple-600 border-purple-400 text-white shadow-md shadow-purple-600/30' : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-gray-200'}`}
-                            >
-                                {v.label}
-                            </button>
-                        ))}
+
+               {showAdvanced && (
+                 <div className="bg-gray-950/40 rounded-2xl p-5 border border-gray-800/60 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Regional & Type */}
+                        <div className="space-y-6">
+                            <div className="flex flex-col gap-3">
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Globe size={12} /> Regional Version 
+                                </span>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setRegionalFilter('US')}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all border ${regionalFilter === 'US' ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-gray-900 border-gray-800 text-gray-500'}`}
+                                    >
+                                        US / International
+                                    </button>
+                                    <button 
+                                        onClick={() => setRegionalFilter('ALL')}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all border ${regionalFilter === 'ALL' ? 'bg-purple-600 border-purple-400 text-white shadow-lg' : 'bg-gray-900 border-gray-800 text-gray-500'}`}
+                                    >
+                                        All Regions (JP + Intl)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Settings2 size={12} /> Chart Type
+                                </span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => toggleChartType('DX')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${chartTypeFilter.includes('DX') ? 'bg-blue-600 border-blue-400 text-white' : 'bg-gray-900 border-gray-800 text-gray-500'}`}>DX</button>
+                                    <button onClick={() => toggleChartType('STD')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${chartTypeFilter.includes('STD') ? 'bg-green-600 border-green-400 text-white' : 'bg-gray-900 border-gray-800 text-gray-500'}`}>Standard (STD)</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Versions & Limits */}
+                        <div className="space-y-6">
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                        <SlidersHorizontal size={12} /> Release Version 
+                                    </span>
+                                    <div className="flex gap-3">
+                                        <button onClick={selectAllVersions} className="text-[10px] text-purple-400 hover:text-purple-300 font-bold uppercase underline-offset-4 hover:underline">All</button>
+                                        <button onClick={selectNoVersions} className="text-[10px] text-gray-500 hover:text-gray-400 font-bold uppercase underline-offset-4 hover:underline">None</button>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {availableVersions.map(v => (
+                                        <button 
+                                            key={v.value} 
+                                            onClick={() => toggleVersion(v.value)}
+                                            className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all border ${versionFilter.includes(v.value) ? 'bg-white/10 border-white/20 text-white' : 'bg-gray-900/50 border-gray-800 text-gray-600 hover:text-gray-400'}`}
+                                        >
+                                            {v.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-               </div>
 
-               {/* Controls Row 3 - Results & Actions */}
-               <div className="flex flex-col md:flex-row items-start md:items-center gap-6 w-full pt-4 border-t border-gray-800/50">
-                  <div className="flex items-center gap-4 flex-1">
-                      <span className="text-sm font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
-                         Max Results
-                      </span>
-                      <input 
-                         type="range" 
-                         min="5" max="45" step="5" 
-                         value={resultsLimit > 40 ? 45 : resultsLimit} 
-                         onChange={(e) => {
-                             const val = Number(e.target.value);
-                             setResultsLimit(val > 40 ? 999999 : val);
-                         }} 
-                         className="flex-1 max-w-[200px] accent-purple-500" 
-                      />
-                      <span className="text-sm font-bold text-gray-200 min-w-[80px]">
-                         {resultsLimit > 40 ? 'Unbounded' : resultsLimit}
-                      </span>
-                  </div>
+                    <div className="mt-8 pt-6 border-t border-gray-800 flex items-center gap-6">
+                        <div className="flex items-center gap-4 flex-1">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Max Results</span>
+                            <div className="flex-1 max-w-[300px] flex items-center gap-4">
+                                <style>{`
+                                    input[type=range].max-results-slider::-webkit-slider-thumb {
+                                        appearance: none;
+                                        width: 1rem;
+                                        height: 1rem;
+                                        border-radius: 9999px;
+                                        background-color: #a855f7;
+                                    }
+                                    input[type=range].max-results-slider::-moz-range-thumb {
+                                        width: 1rem;
+                                        height: 1rem;
+                                        border-radius: 9999px;
+                                        border: none;
+                                        background-color: #a855f7;
+                                    }
+                                `}</style>
+                                <input 
+                                    type="range" 
+                                    min="5" max="45" step="5" 
+                                    value={resultsLimit > 40 ? 45 : resultsLimit} 
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setResultsLimit(val > 40 ? 999999 : val);
+                                    }} 
+                                    className="max-results-slider flex-1 h-1 bg-gray-800 rounded-full appearance-none" 
+                                />
+                                <span className="text-xs font-black text-purple-400 min-w-[70px]">
+                                    {resultsLimit > 40 ? 'UNBOUNDED' : resultsLimit}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+               )}
 
-                  <div className="w-px h-8 bg-gray-800 hidden md:block"></div>
-
-                  <button 
-                    onClick={executeSearch}
-                    disabled={searching}
-                    className="w-full md:w-auto flex flex-col md:flex-row items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-2 px-6 rounded-xl shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_20px_rgba(168,85,247,0.6)] transition-all disabled:opacity-50 text-sm"
-                  >
-                     {searching ? (
-                         <>
-                            <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
-                            Loading
-                         </>
-                     ) : (
-                         <>
-                            <Search size={16} />
-                            Search
-                         </>
-                     )}
-                  </button>
+               {/* Main Action Button */}
+               <div className="mt-2 flex gap-4">
+                   <button 
+                        onClick={executeSearch}
+                        disabled={searching}
+                        className="flex-1 group relative overflow-hidden bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-[length:200%_auto] hover:bg-[100%_center] text-white font-black py-4 px-8 rounded-2xl shadow-xl transition-all duration-500 disabled:opacity-50 uppercase tracking-[0.3em] text-sm"
+                   >
+                        <div className="flex items-center justify-center gap-3">
+                            {searching ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <span>Rebuilding Matrix...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Search size={18} className="group-hover:scale-110 transition-transform" />
+                                    <span>Sync Compatible Charts</span>
+                                </>
+                            )}
+                        </div>
+                   </button>
+                   
+                   <button onClick={() => setShowInfoModal(true)} className="w-14 h-14 flex items-center justify-center bg-gray-900 border border-gray-800 rounded-2xl text-gray-500 hover:text-white transition-all">
+                        <Info size={20} />
+                   </button>
                </div>
                
-               {/* Controls Row 3 - Hidden Status */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-sm w-full bg-gray-950/50 p-4 rounded-xl border border-gray-800">
-                 <div className="flex items-center gap-2 text-gray-400">
-                    <EyeOff size={16} />
-                    <span>{matchedSongs.filter(m => hiddenCharts.includes(`${m.song.songId}_${m.type}`)).length} hidden results found</span>
+               {/* Hidden Status */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-[10px] w-full bg-gray-950/30 p-4 rounded-2xl border border-gray-900 mt-2 font-black uppercase tracking-widest">
+                 <div className="flex items-center gap-2 text-gray-600">
+                    <EyeOff size={12} />
+                    <span>{matchedSongs.filter(m => hiddenCharts.includes(`${m.song.songId}_${m.type}`)).length} results masked</span>
                  </div>
                  <div className="flex-1"></div>
                  {hiddenCharts.length > 0 && (
-                   <button onClick={() => setShowHiddenModal(true)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors underline decoration-dotted">
-                     Manage Hidden
-                   </button>
+                   <button onClick={() => setShowHiddenModal(true)} className="text-gray-500 hover:text-white transition-colors underline decoration-dotted">Mange Masked</button>
                  )}
                  {hiddenCharts.length > 0 && (
-                   <button onClick={handleUnhideAllFilters} className="flex items-center gap-2 text-white bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg shadow-lg font-bold transition-colors">
-                     Clear Active Focus
-                   </button>
+                   <button onClick={handleUnhideAllFilters} className="text-white hover:text-purple-400 transition-colors">Reset Focus</button>
                  )}
                  {hiddenCharts.length > 0 && (
-                   <button onClick={handleHardReset} className="flex items-center gap-2 text-white bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg shadow-lg font-bold transition-colors" title="Explicit Global Clean">
-                     Hard Reset All
-                   </button>
+                   <button onClick={handleHardReset} className="text-red-900/50 hover:text-red-600 transition-all font-black" title="Explicit Global Clean">Force Flush</button>
                  )}
                </div>
              </div>
