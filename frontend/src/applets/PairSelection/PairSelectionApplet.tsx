@@ -255,11 +255,8 @@ export default function PairSelectionApplet() {
         }
 
         // Apply regional filter
-        if (regionalFilter === 'US') {
-            const isIntl = String(song.intl) === "1" || song.intl === true || String(song.intl).toLowerCase() === "true" || song.intl === "Yes";
-            if (!isIntl) {
-                continue; 
-            }
+        if (regionalFilter === 'US' && song.unavailable_usa === true) {
+            continue;
         }
 
         const processType = (targetType: 'DX' | 'STD') => {
